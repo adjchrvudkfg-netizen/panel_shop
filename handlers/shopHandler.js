@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { sendPaymentGateway } = require('../services/paymentService');
 
+// Aapka Telegram Admin ID set kar diya gaya hai
+const ADMIN_ID = '8805135936';
+
 function getStoredKeys() {
     try {
         const filePath = path.join(__dirname, '../data/keys.json');
@@ -79,48 +82,103 @@ function setupShopHandler(bot) {
         } catch (e) { console.error(e); }
     });
 
-    // 4. Buy Product & Trigger QR Gateway
+    // 4. Buy Product & Trigger QR Gateway with Admin Tracking
     bot.action(/^buy_(phantom|drip)_(\d+)$/, async (ctx) => {
         await ctx.answerCbQuery('Opening Payment Gateway...');
         const productType = ctx.match[1];
         const amount = ctx.match[2];
         const internalKey = `${productType}_${amount}`;
 
-        await sendPaymentGateway(ctx, amount, `verify_key_${internalKey}`, 'shop_menu');
+        // User ID ke sath payment done action banaya
+        await sendPaymentGateway(ctx, amount, `paydone_${ctx.from.id}_${internalKey}`, 'shop_menu');
     });
 
-    // 5. Verify & Auto Key Delivery
-    bot.action(/^verify_key_(.+)$/, async (ctx) => {
-        await ctx.answerCbQuery('Verifying...');
-        const internalKey = ctx.match[1];
+    // 5. User clicks "Payment Done" -> Notify Admin
+    bot.action(/^paydone_(\d+)_(.+)$/, async (ctx) => {
+        await ctx.answerCbQuery('Payment submission sent to Admin!');
+        const userId = ctx.match[1];
+        const internalKey = ctx.match[2];
+
+        await ctx.editMessageText(`⏳ **Payment Verification Pending**\n\nAapki payment request admin ke paas bhej di gayi hai. Admin verify karte hi aapko key mil jayegi!`, {
+            parse_mode: 'Markdown'
+        });
+
+        const adminText = 
+`🔔 **NEW PAYMENT VERIFICATION REQUEST**
+
+👤 **User ID:** \`${userId}\`
+📦 **Product/Plan:** \`${internalKey}\`
+
+Kripya check karein ki payment prapt hui hai ya nahi:`;
+
+        try {
+            await bot.telegram.sendMessage(ADMIN_ID, adminText, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('✅ Approve & Send Key', `admin_approve_${userId}_${internalKey}`)],
+                    [Markup.button.callback('❌ Reject', `admin_reject_${userId}`)]
+                ])
+            });
+        } catch (err) {
+            console.error('Failed to send admin notification:', err);
+        }
+    });
+
+    // 6. Admin clicks "Approve" -> Deliver Key Automatically to User
+    bot.action(/^admin_approve_(\d+)_(.+)$/, async (ctx) => {
+        await ctx.answerCbQuery('Approving payment...');
+        const userId = ctx.match[1];
+        const internalKey = ctx.match[2];
+
         const assignedKey = consumeKey(internalKey);
 
         if (!assignedKey) {
-            return ctx.reply('⚠️ Filhal is plan ki stock me key available nahi hai! Admin se contact karein.');
+            return ctx.editMessageText(`⚠️ Error: Stock me ab '${internalKey}' ki koi key bachi nahi hai!`);
         }
 
-        await ctx.reply(`🎉 **KEY DELIVERED SUCCESSFULLY!**\n\n\`${assignedKey}\``, {
-            parse_mode: 'Markdown',
-            ...Markup.inlineKeyboard([
-                [Markup.button.callback('🛍️ Back to Shop', 'shop_menu')]
-            ])
-        });
+        await ctx.editMessageText(`✅ **Payment Approved Successfully!**\nKey user ko deliver kar di gayi hai.`);
+
+        try {
+            await bot.telegram.sendMessage(userId, 
+`🎉 **PAYMENT APPROVED & KEY DELIVERED!** 🎉
+
+──────────────────
+🔑 **Your License Key:**
+\`${assignedKey}\`
+──────────────────
+
+Thank you for purchasing!`, {
+                parse_mode: 'Markdown'
+            });
+        } catch (err) {
+            console.error('Failed to deliver key to user:', err);
+            await ctx.reply(`⚠️ User ko message nahi ja saka. Key ye rahi: \`${assignedKey}\``);
+        }
     });
 
-    // 6. Add Balance Handler
+    // 7. Admin clicks "Reject"
+    bot.action(/^admin_reject_(\d+)$/, async (ctx) => {
+        await ctx.answerCbQuery('Payment rejected.');
+        const userId = ctx.match[1];
+
+        await ctx.editMessageText(`❌ **Payment Rejected.**`);
+
+        try {
+            await bot.telegram.sendMessage(userId, `❌ Aapki payment request admin dwara **reject** kar di gayi hai. Support (@adityachoudhary5) se sampark karein.`);
+        } catch (e) {
+            console.error(e);
+        }
+    });
+
+    // 8. Add Balance Handler
     bot.action('add_balance', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            await sendPaymentGateway(ctx, 50, 'verify_balance_50', 'back_to_start');
+            await sendPaymentGateway(ctx, 50, `paydone_${ctx.from.id}_wallet_50`, 'back_to_start');
         } catch (e) { console.error(e); }
     });
 
-    bot.action(/^verify_balance_(\d+)$/, async (ctx) => {
-        await ctx.answerCbQuery('Verifying...');
-        await ctx.reply(`✅ Payment verification request received! Admin verify karke balance add kar dega.`);
-    });
-
-    // 7. Back to Main Menu
+    // 9. Back to Main Menu
     bot.action('back_to_start', async (ctx) => {
         try {
             await ctx.answerCbQuery();
