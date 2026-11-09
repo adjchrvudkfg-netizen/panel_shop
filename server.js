@@ -1,4 +1,4 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const express = require('express');
 const path = require('path');
 const https = require('https');
@@ -34,11 +34,11 @@ bot.start(async (ctx) => {
 
         await ctx.reply(welcomeText, {
             parse_mode: 'Markdown',
-            ...Telegraf.Markup.inlineKeyboard([
-                [Telegraf.Markup.button.callback('🛍️ Shop', 'shop_menu')],
-                [Telegraf.Markup.button.callback('💳 Add Balance', 'add_balance'), Telegraf.Markup.button.callback('📦 My Orders', 'my_orders')],
-                [Telegraf.Markup.button.callback('👤 My Profile', 'my_profile'), Telegraf.Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
-                [Telegraf.Markup.button.url('🎧 Support', 'https://t.me/adityachoudhary5')]
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('🛍️ Shop', 'shop_menu')],
+                [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📦 My Orders', 'my_orders')],
+                [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
+                [Markup.button.url('🎧 Support', 'https://t.me/adityachoudhary5')]
             ])
         });
     } catch (e) {
@@ -46,16 +46,13 @@ bot.start(async (ctx) => {
     }
 });
 
-// Handlers ko import karke bot ke sath connect karna
+// Load Shop Handler safely
 try {
     const { setupShopHandler } = require('./handlers/shopHandler');
-    const { setupWalletHandler } = require('./handlers/walletHandler');
-
     setupShopHandler(bot);
-    setupWalletHandler(bot);
-    console.log('✅ All handlers loaded successfully!');
+    console.log('✅ Shop handler loaded successfully!');
 } catch (e) {
-    console.error('⚠️ Handler loading error:', e.message);
+    console.error('⚠️ Shop handler error:', e.message);
 }
 
 // Dummy Placeholders for unhandled buttons
@@ -82,12 +79,12 @@ app.listen(PORT, () => {
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-// Self-Ping Keep-Alive (Render sleep rokne ke liye)
-const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://drake-panel-8py1.onrender.com';[span_0](start_span)[span_0](end_span)
+// Self-Ping Keep-Alive to prevent Render sleeping
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://drake-panel-8py1.onrender.com';
 setInterval(() => {
     https.get(RENDER_URL, (res) => {
         console.log(`[Keep-Alive] Pinged server, status: ${res.statusCode}`);
     }).on('error', (err) => {
         console.error('[Keep-Alive] Ping error:', err.message);
     });
-}, 10 * 60 * 1000); // Har 10 minute me ping karega
+}, 10 * 60 * 1000);

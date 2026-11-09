@@ -32,7 +32,7 @@ function consumeKey(productKey) {
 }
 
 function setupShopHandler(bot) {
-    // Shop Menu
+    // 1. Shop Menu
     bot.action('shop_menu', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -47,7 +47,7 @@ function setupShopHandler(bot) {
         } catch (e) { console.error(e); }
     });
 
-    // Phantom Prices
+    // 2. Phantom Prices
     bot.action('product_phantom', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -63,7 +63,7 @@ function setupShopHandler(bot) {
         } catch (e) { console.error(e); }
     });
 
-    // Drip Client Prices
+    // 3. Drip Client Prices
     bot.action('product_drip', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -79,7 +79,7 @@ function setupShopHandler(bot) {
         } catch (e) { console.error(e); }
     });
 
-    // Buy Product & Trigger QR Gateway
+    // 4. Buy Product & Trigger QR Gateway
     bot.action(/^buy_(phantom|drip)_(\d+)$/, async (ctx) => {
         await ctx.answerCbQuery('Opening Payment Gateway...');
         const productType = ctx.match[1];
@@ -89,7 +89,7 @@ function setupShopHandler(bot) {
         await sendPaymentGateway(ctx, amount, `verify_key_${internalKey}`, 'shop_menu');
     });
 
-    // Verify & Auto Key Delivery
+    // 5. Verify & Auto Key Delivery
     bot.action(/^verify_key_(.+)$/, async (ctx) => {
         await ctx.answerCbQuery('Verifying...');
         const internalKey = ctx.match[1];
@@ -107,11 +107,41 @@ function setupShopHandler(bot) {
         });
     });
 
-    // Back to Main Menu
+    // 6. Add Balance Handler
+    bot.action('add_balance', async (ctx) => {
+        try {
+            await ctx.answerCbQuery();
+            await sendPaymentGateway(ctx, 50, 'verify_balance_50', 'back_to_start');
+        } catch (e) { console.error(e); }
+    });
+
+    bot.action(/^verify_balance_(\d+)$/, async (ctx) => {
+        await ctx.answerCbQuery('Verifying...');
+        await ctx.reply(`✅ Payment verification request received! Admin verify karke balance add kar dega.`);
+    });
+
+    // 7. Back to Main Menu
     bot.action('back_to_start', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            const welcomeText = `⌨️ – ADITYA PANEL SHOP – ⌨️\n\n🌸 Hello, ${ctx.from.first_name || 'User'}!`;
+            const welcomeText = 
+`⌨️ – ADITYA PANEL SHOP – ⌨️
+
+🌸 Hello, ${ctx.from.first_name || 'User'}!
+
+⚝ **Premium digital keys, instant delivery.**
+
+– 🛒 **Wide product catalog**
+– ⚡ **Instant key delivery**
+– 💲 **Multiple payment gateways**
+– 🛡️ **24/7 admin support**
+
+**Tap any button below to begin.**
+
+──────────────────
+👤 User ID: \`${ctx.from.id}\`
+💰 Wallet Balance: ₹0 (~$0.85)`;
+
             await ctx.editMessageText(welcomeText, {
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
@@ -125,19 +155,4 @@ function setupShopHandler(bot) {
     });
 }
 
-// Optional wallet handler file content can also be merged or kept separate
-function setupWalletHandler(bot) {
-    bot.action('add_balance', async (ctx) => {
-        try {
-            await ctx.answerCbQuery();
-            await sendPaymentGateway(ctx, 50, 'verify_balance_50', 'back_to_start');
-        } catch (e) { console.error(e); }
-    });
-
-    bot.action(/^verify_balance_(\d+)$/, async (ctx) => {
-        await ctx.answerCbQuery('Verifying...');
-        await ctx.reply(`✅ Payment verification request received! Admin verify karke balance add kar dega.`);
-    });
-}
-
-module.exports = { setupShopHandler, setupWalletHandler };
+module.exports = { setupShopHandler };
