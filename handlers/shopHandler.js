@@ -1,7 +1,9 @@
 const { Markup } = require('telegraf');
 const fs = require('fs');
 const path = require('path');
+const { sendPaymentGateway } = require('../services/paymentService');
 
+// Helper to read keys from keys.json
 function getStoredKeys() {
     try {
         const filePath = path.join(__dirname, '../data/keys.json');
@@ -15,14 +17,15 @@ function getStoredKeys() {
     return {};
 }
 
+// Helper to remove and return a used key
 function consumeKey(productKey) {
     try {
         const filePath = path.join(__dirname, '../data/keys.json');
         const keysData = getStoredKeys();
         
         if (keysData[productKey] && keysData[productKey].length > 0) {
-            const assignedKey = keysData[productKey].shift();
-            fs.writeFileSync(filePath, JSON.stringify(keysData, null, 2));
+            const assignedKey = keysData[productKey].shift(); // Pehli key nikal li
+            fs.writeFileSync(filePath, JSON.stringify(keysData, null, 2)); // Stock update save kiya
             return assignedKey;
         }
     } catch (e) {
@@ -32,7 +35,7 @@ function consumeKey(productKey) {
 }
 
 function setupShopHandler(bot) {
-    // Shop Menu
+    // 1. Shop Menu
     bot.action('shop_menu', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -50,11 +53,16 @@ function setupShopHandler(bot) {
         }
     });
 
-    // Phantom Prices
+    // 2. Phantom Panel Prices
     bot.action('product_phantom', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            const phantomText = `👻 **PHANTOM PANEL - PRICING** 👻\n\nSelect your desired plan below:\n🔗 [Click here to view Phantom update](https://t.me/c/4332593307/2/5)`;
+            const phantomText = 
+`👻 **PHANTOM PANEL - PRICING** 👻
+
+Select your desired plan below:
+🔗 [Click here to view Phantom update](https://t.me/c/4332593307/2/5)`;
+
             await ctx.editMessageText(phantomText, {
                 parse_mode: 'Markdown',
                 disable_web_page_preview: true,
@@ -70,11 +78,16 @@ function setupShopHandler(bot) {
         }
     });
 
-    // Drip Client Prices (Fixed)
+    // 3. Drip Client Prices
     bot.action('product_drip', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            const dripText = `💧 **DRIP CLIENT - PRICING** 💧\n\nSelect your desired plan below:\n🔗 [Click here to view Drip Client update](https://t.me/c/4332593307/3/4)`;
+            const dripText = 
+`💧 **DRIP CLIENT - PRICING** 💧
+
+Select your desired plan below:
+🔗 [Click here to view Drip Client update](https://t.me/c/4332593307/3/4)`;
+
             await ctx.editMessageText(dripText, {
                 parse_mode: 'Markdown',
                 disable_web_page_preview: true,
@@ -90,62 +103,28 @@ function setupShopHandler(bot) {
         }
     });
 
-    // Buy Plan & Generate Payment Gateway Message
+    // 4. Plan click hote hi paymentService se QR generate karna
     bot.action(/^buy_(phantom|drip)_(\d+)$/, async (ctx) => {
         await ctx.answerCbQuery('Opening Payment Gateway...');
         const productType = ctx.match[1];
         const planDuration = ctx.match[2];
         const amount = parseInt(planDuration, 10);
         const internalKey = `${productType}_${amount}`;
-        const upiId = '9694421148@fam';
 
-        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent('Aditya')}&am=${amount}&cu=INR`;
-        const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&margin=2&format=png`;
-
-        const paymentText = 
-`🏛️ **FAMCORP PAYMENT GATEWAY**
-
-──────────────────
-👤 **UPI ID:** \`${upiId}\`
-💰 **Amount:** ₹${amount}
-──────────────────
-
-1. Niche diye gaye button par click karke payment karein ya QR scan karein.
-2. Payment hone ke baad **"✅ Payment Done"** par click karein.`;
-
-        try {
-            await ctx.deleteMessage().catch(() => {});
-            await ctx.replyWithPhoto(qrImageUrl, {
-                caption: paymentText,
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.url('⚡ Pay via FamPay / UPI App', upiString)],
-                    [Markup.button.callback(`✅ Payment Done`, `verify_key_${internalKey}`)],
-                    [Markup.button.callback('◀️ Back to Shop', 'shop_menu')]
-                ])
-            });
-        } catch (err) {
-            // Fallback agar photo send na ho paye toh text message bhej dega taaki ruka na rahe
-            await ctx.reply(paymentText + `\n\n🔗 **Direct Payment Link:** ${upiString}`, {
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.url('⚡ Pay via UPI App', upiString)],
-                    [Markup.button.callback(`✅ Payment Done`, `verify_key_${internalKey}`)],
-                    [Markup.button.callback('◀️ Back to Shop', 'shop_menu')]
-                ])
-            });
-        }
+        // Dedicated Payment Service call ki (No QR error)
+        await sendPaymentGateway(ctx, amount, `verify_key_${internalKey}`, 'shop_menu');
     });
 
-    // Verify & Auto Key Delivery
+    // 5. Payment Verification & Automatic Key Delivery
     bot.action(/^verify_key_(.+)$/, async (ctx) => {
-        const internalKey = ctx.match[1];
-        await ctx.answerCbQuery('Verifying payment & fetching key...');
+        const internalKey = ctx.match[1]; // jaise phantom_95 ya drip_99
+        await ctx.answerCbQuery('Verifying payment and fetching key...');
 
+        // Stock se key nikal li aur list se delete kar di
         const assignedKey = consumeKey(internalKey);
 
         if (!assignedKey) {
-            return ctx.reply('⚠️ Filhal is plan ki stock me koi key available nahi hai! Kripya admin (@adityachoudhary5) se contact karein.');
+            return ctx.reply('⚠️ Filhal is plan ki stock me koi key available nahi hai! Kripya admin (@adityachoudhary5) se contact karein, jald hi stock refill kar diya jayega.');
         }
 
         const successText = 
@@ -156,26 +135,21 @@ function setupShopHandler(bot) {
 \`${assignedKey}\`
 ──────────────────
 
-⚠️ Yeh key ab stock se hata di gayi hai.`;
+⚠️ Is key ko sambhal kar rakhein. Yeh key ab stock se hata di gayi hai taaki koi aur use na kar sake.`;
 
         try {
-            await ctx.editMessageCaption(successText, {
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.callback('🛍️ Back to Shop', 'shop_menu')]
-                ])
-            });
-        } catch (e) {
             await ctx.reply(successText, {
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
                     [Markup.button.callback('🛍️ Back to Shop', 'shop_menu')]
                 ])
             });
+        } catch (e) {
+            console.error('Key delivery message error:', e);
         }
     });
 
-    // Back to Main Menu
+    // 6. Back to Main Menu Handler
     bot.action('back_to_start', async (ctx) => {
         try {
             await ctx.answerCbQuery();
