@@ -1,34 +1,40 @@
-const { backButton } = require('../utils/keyboards');
+const { Markup } = require('telegraf');
 
 function setupProfileHandler(bot) {
-  bot.action('my_profile', (ctx) => {
-    const userId = ctx.from.id;
-    const name = ctx.from.first_name;
+    bot.action('my_profile', async (ctx) => {
+        try {
+            await ctx.answerCbQuery();
+            const profileText = 
+`👤 **USER PROFILE**
 
-    const profileText = `
-👑 **— YOUR PROFILE —** 👑
+🆔 **User ID:** \`${ctx.from.id}\`
+👤 **Name:** ${ctx.from.first_name}
+💰 **Wallet Balance:** ₹0
+📦 **Total Orders:** 0`;
 
-• **User ID:** ${userId}
-👑 **Name:** ${name}
-📞 **Phone:** 919694421148
-🍎 **Account:** 🔵 Regular | 🟢 Active
-
-💰 **— Balance —**
-🟢 **Current:** ₹80
-
-📊 **— Statistics —**
-🛒 **Orders:** 8
-💸 **Spent:** ₹346
-
-Joined: 2026-10-23
-🎁 **Referral Earned:** ₹0
-    `;
-
-    ctx.editMessageText(profileText, {
-      parse_mode: 'Markdown',
-      ...backButton
+            await ctx.reply(profileText, { parse_mode: 'Markdown' });
+        } catch (error) {
+            console.error('Error in my_profile action:', error);
+        }
     });
-  });
+
+    bot.action('support', async (ctx) => {
+        try {
+            await ctx.answerCbQuery();
+            await ctx.reply('🎧 For any support or issues, contact admin: @YourAdminUsername');
+        } catch (error) {
+            console.error('Error in support action:', error);
+        }
+    });
+
+    // Baaki actions ke liye fallback handler
+    const actionsList = ['how_to_use', 'referral', 'daily_spin', 'selling_proof', 'leaderboard'];
+    actionsList.forEach((act) => {
+        bot.action(act, async (ctx) => {
+            await ctx.answerCbQuery();
+            await ctx.reply(`✨ Feature '${act.replace(/_/g, ' ')}' is coming soon!`);
+        });
+    });
 }
 
 module.exports = { setupProfileHandler };

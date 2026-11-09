@@ -2,6 +2,12 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const express = require('express');
 
+// Apne handlers folder se saare handlers import karein
+const { setupStartHandler } = require('./handlers/startHandler');
+const { setupShopHandler } = require('./handlers/shopHandler');
+const { setupProfileHandler } = require('./handlers/profileHandler');
+const { setupWalletHandler } = require('./handlers/walletHandler');
+
 const token = process.env.BOT_TOKEN;
 const PORT = process.env.PORT || 3000;
 
@@ -13,45 +19,35 @@ if (!token) {
 const bot = new Telegraf(token);
 const app = express();
 
-// Express ko JSON parse karne ke liye configure karein
+// Express JSON middleware
 app.use(express.json());
 
-// Render ka public URL automatic le lega
+// Render URL aur Webhook configuration
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL || `https://panel-shop.onrender.com`;
 const webhookPath = `/telegraf/${bot.secretPathComponent()}`;
 
-// Webhook setup
 app.use(bot.webhookCallback(webhookPath));
 
-// Telegram par webhook set karein
 bot.telegram.setWebhook(`${RENDER_URL}${webhookPath}`).then(() => {
     console.log(`🔗 Webhook successfully set to: ${RENDER_URL}${webhookPath}`);
 });
 
-// --- Bot Command Handlers ---
-bot.start((ctx) => {
-    ctx.reply('🎉 Welcome! Your Telegram Bot is successfully running via Webhook.');
-});
+// --- Register All Handlers ---
+if (typeof setupStartHandler === 'function') setupStartHandler(bot);
+if (typeof setupShopHandler === 'function') setupShopHandler(bot);
+if (typeof setupProfileHandler === 'function') setupProfileHandler(bot);
+if (typeof setupWalletHandler === 'function') setupWalletHandler(bot);
 
-bot.help((ctx) => {
-    ctx.reply('Send /start to initialize the bot.');
-});
-
-// Echo text handler
-bot.on('text', (ctx) => {
-    ctx.reply(`Aapne kaha: ${ctx.message.text}`);
-});
-
-// Basic health check route for Render
+// Basic Health Check Route for Render
 app.get('/', (req, res) => {
-    res.send('🤖 Telegram Bot is running live via Webhook!');
+    res.send('🤖 Telegram Panel Shop Bot is running live via Webhook!');
 });
 
-// Server start karein
+// Server Start
 app.listen(PORT, () => {
     console.log(`🚀 Server is listening on port ${PORT}`);
 });
 
-// Graceful stop
+// Graceful Stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

@@ -1,24 +1,23 @@
-const { keypadKeyboard } = require('../utils/keyboards');
+const { Markup } = require('telegraf');
 
 function setupWalletHandler(bot) {
-  bot.action('add_balance', (ctx) => {
-    const walletText = `
-🏦 **Custom Amount**
------------------------------------
-Method: 🟢 **UPI (ZapUPI)**
-Min: ₹1 | Max: ₹5,000
-
-Apna amount enter karo aur payment complete karke balance add karwao.
-
-🔽 **Amount:** ₹0 (~$0.00)
-
-🔽 **Amount type karo – buttons se:**
-    `;
-    ctx.editMessageText(walletText, {
-      parse_mode: 'Markdown',
-      ...keypadKeyboard
+    bot.action('add_balance', async (ctx) => {
+        try {
+            await ctx.answerCbQuery();
+            await ctx.reply('💳 To add balance, please contact the admin or choose a payment method below:\n\nUPI / Crypto accepted.');
+        } catch (error) {
+            console.error('Error in add_balance action:', error);
+        }
     });
-  });
+
+    bot.action('my_orders', async (ctx) => {
+        try {
+            await ctx.answerCbQuery();
+            await ctx.reply('📦 You have no active orders right now.');
+        } catch (error) {
+            console.error('Error in my_orders action:', error);
+        }
+    });
 }
 
 module.exports = { setupWalletHandler };

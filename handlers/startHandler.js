@@ -7,7 +7,7 @@ function setupStartHandler(bot) {
     const walletBalance = 80; // Dummy balance for mock UI
 
     const welcomeText = `
-🌸 **- VETLAM PANEL SHOP -** 🌸
+🌸 **- ADITYA PANEL SHOP -** 🌸
 
 🎀 Hello, ${userName}!
 

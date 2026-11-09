@@ -1,37 +1,56 @@
-const { productListKeyboard, durationKeyboard, backButton } = require('../utils/keyboards');
+const { Markup } = require('telegraf');
 
 function setupShopHandler(bot) {
-  // Open Shop Menu (Image 2)
-  bot.action('shop_menu', (ctx) => {
-    ctx.editMessageText('🛒 **Apna Product Chunlo!** 👇', {
-      parse_mode: 'Markdown',
-      ...productListKeyboard
+    bot.action('shop_menu', async (ctx) => {
+        try {
+            await ctx.answerCbQuery();
+            const shopText = 
+`🛍️ **– VETLAM PANEL SHOP –** 🛍️
+
+Please select a category or product below:`;
+
+            await ctx.editMessageText(shopText, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🔑 Free Fire Panel Keys', 'cat_ff_keys')],
+                    [Markup.button.callback('🛡️ VIP Mods & Injectors', 'cat_vip_mods')],
+                    [Markup.button.callback('🔙 Back to Main Menu', 'back_to_start')]
+                ])
+            });
+        } catch (error) {
+            console.error('Error in shop_menu action:', error);
+        }
     });
-  });
 
-  // Select Specific Product (Image 3 - Aim Hack Example)
-  bot.action('prod_aim_hack', (ctx) => {
-    const productText = `
-🎯 **AIM HACK { MAIN ID SAFE }**
+    bot.action('back_to_start', async (ctx) => {
+        try {
+            await ctx.answerCbQuery();
+            const welcomeText = 
+`🌸 **– VETLAM PANEL SHOP –** 🌸
 
-Website:
-🔗 https://client.aimhack.shop/
+🌸 **Hello, ${ctx.from.first_name || 'User'}!**
 
-Select Duration:
-    `;
-    ctx.editMessageText(productText, {
-      parse_mode: 'Markdown',
-      ...durationKeyboard
+⚝ **Premium digital keys, instant delivery.**
+
+──────────────────
+👤 User ID: \`${ctx.from.id}\`
+💰 Wallet Balance: ₹0 (~$0.00)`;
+
+            await ctx.editMessageText(welcomeText, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🛍️ Shop', 'shop_menu')],
+                    [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📦 My Orders', 'my_orders')],
+                    [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.callback('▶️ How To Use', 'how_to_use')],
+                    [Markup.button.callback('🔗 Referral', 'referral'), Markup.button.callback('🎡 Daily Spin', 'daily_spin')],
+                    [Markup.button.callback('🎧 Support', 'support')],
+                    [Markup.button.callback('💎 Selling Proof', 'selling_proof'), Markup.button.callback('📊 Leaderboard', 'leaderboard')]
+                ])
+            });
+        } catch (error) {
+            console.error('Error in back_to_start action:', error);
+        }
     });
-  });
-
-  // Mock Purchase action
-  bot.action('buy_1d', (ctx) => {
-    ctx.answerCbQuery('Processing order...');
-    ctx.reply(
-      '❌ Abhi key generate nahi ho paayi, isliye aapka balance deduct nahi hua. Thodi der baad dobara try karein.'
-    );
-  });
 }
 
 module.exports = { setupShopHandler };
