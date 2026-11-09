@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const express = require('express');
 
@@ -15,8 +16,7 @@ const app = express();
 // Express ko JSON parse karne ke liye configure karein
 app.use(express.json());
 
-// Render ka public URL yahan automatic le lega ya aap apna Render Web Service ka URL daal sakte hain
-// Jaise: https://panel-shop.onrender.com
+// Render ka public URL automatic le lega
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL || `https://panel-shop.onrender.com`;
 const webhookPath = `/telegraf/${bot.secretPathComponent()}`;
 
@@ -26,6 +26,20 @@ app.use(bot.webhookCallback(webhookPath));
 // Telegram par webhook set karein
 bot.telegram.setWebhook(`${RENDER_URL}${webhookPath}`).then(() => {
     console.log(`🔗 Webhook successfully set to: ${RENDER_URL}${webhookPath}`);
+});
+
+// --- Bot Command Handlers ---
+bot.start((ctx) => {
+    ctx.reply('🎉 Welcome! Your Telegram Bot is successfully running via Webhook.');
+});
+
+bot.help((ctx) => {
+    ctx.reply('Send /start to initialize the bot.');
+});
+
+// Echo text handler
+bot.on('text', (ctx) => {
+    ctx.reply(`Aapne kaha: ${ctx.message.text}`);
 });
 
 // Basic health check route for Render
