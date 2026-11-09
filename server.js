@@ -15,7 +15,7 @@ setupWalletHandler(bot);
 setupProfileHandler(bot);
 
 // Launch Bot
-bot.launch().then(() => {
+bot.launch({ dropPendingUpdates: true }).then(() => {
   console.log('🤖 Bot is successfully running!');
 });
 
