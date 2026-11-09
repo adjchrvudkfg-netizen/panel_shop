@@ -30,7 +30,7 @@ function setupWalletHandler(bot) {
             }
             
             // Limit amount to 5000 max
-            if (parseInt(current) > 5000) current = '5000';
+            if (parseInt(current, 10) > 5000) current = '5000';
             
             userAmounts[userId] = current;
             await updateKeypad(ctx, current);
@@ -57,9 +57,10 @@ function setupWalletHandler(bot) {
     bot.action('amt_conf', async (ctx) => {
         await ctx.answerCbQuery();
         const userId = ctx.from.id;
-        const amount = userAmounts[userId] || '0';
+        const rawAmount = userAmounts[userId] || '0';
+        const amount = parseInt(rawAmount, 10);
 
-        if (parseInt(amount) <= 0) {
+        if (isNaN(amount) || amount <= 0) {
             return ctx.reply('⚠️ Kripya kam se kam ₹1 ya usse zyada amount enter karein.');
         }
 
@@ -88,12 +89,11 @@ function setupWalletHandler(bot) {
         });
     });
 
-    // 5. Payment Verification Trigger (Jab user payment done dabaye)
+    // 5. Payment Verification Trigger
     bot.action(/^verify_pay_(\d+)$/, async (ctx) => {
         await ctx.answerCbQuery('Checking payment status...');
         const amount = ctx.match[1];
         
-        // Yahan automatic payment verification ya manual screenshot confirmation ka logic aayega
         await ctx.reply(`🔍 Payment verification initiated for ₹${amount}.\n\n⚠️ Agar aapne payment kar diya hai, toh kripya admin (@adityachoudhary5) ko screenshot bhejiye, turant balance add kar diya jayega!`);
     });
 
@@ -113,7 +113,7 @@ async function showKeypad(ctx, amount) {
 `🏛️ **Custom Amount**
 
 ──────────────────
-Method: 💚 FamPay UPI (` + '9694421148@fam' + `)
+Method: 💚 FamPay UPI (9694421148@fam)
 Min: ₹1 | Max: ₹5,000
 ──────────────────
 
@@ -133,7 +133,7 @@ async function updateKeypad(ctx, amount) {
 `🏛️ **Custom Amount**
 
 ──────────────────
-Method: 💚 FamPay UPI (` + '9694421148@fam' + `)
+Method: 💚 FamPay UPI (9694421148@fam)
 Min: ₹1 | Max: ₹5,000
 ──────────────────
 
@@ -148,7 +148,7 @@ Apna amount enter karo aur payment complete karke balance add karwao.
             ...getKeypadMarkup()
         });
     } catch (e) {
-        // Ignore error agar text same ho
+        // Ignore error if text hasn't changed
     }
 }
 
