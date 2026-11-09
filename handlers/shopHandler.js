@@ -1,4 +1,6 @@
 const { Markup } = require('telegraf');
+const fs = require('fs');
+const path = require('path');
 
 // Helper function to generate FamPay UPI QR URL
 function generateUpiQrUrl(amount, upiId = '9694421148@fam', payeeName = 'Aditya') {
@@ -7,8 +9,39 @@ function generateUpiQrUrl(amount, upiId = '9694421148@fam', payeeName = 'Aditya'
     return { upiString, qrImageUrl };
 }
 
+// Helper to get keys from keys.json
+function getStoredKeys() {
+    try {
+        const filePath = path.join(__dirname, '../data/keys.json');
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error('Error reading keys:', e);
+    }
+    return {};
+}
+
+// Helper to remove and return a used key
+function consumeKey(productKey) {
+    try {
+        const filePath = path.join(__dirname, '../data/keys.json');
+        const keysData = getStoredKeys();
+        
+        if (keysData[productKey] && keysData[productKey].length > 0) {
+            const assignedKey = keysData[productKey].shift(); // Pehli key nikal lo
+            fs.writeFileSync(filePath, JSON.stringify(keysData, null, 2)); // Save updated list
+            return assignedKey;
+        }
+    } catch (e) {
+        console.error('Error consuming key:', e);
+    }
+    return null;
+}
+
 function setupShopHandler(bot) {
-    // 1. Shop Menu - Products list
+    // 1. Shop Menu
     bot.action('shop_menu', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -26,11 +59,11 @@ Please select a product below to view prices and buy:`;
                 ])
             });
         } catch (error) {
-            console.error('Error in shop_menu action:', error);
+            console.error('Error in shop_menu:', error);
         }
     });
 
-    // 2. Phantom Prices (Link inside text message)
+    // 2. Phantom Prices
     bot.action('product_phantom', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -55,7 +88,7 @@ Select your desired plan below:
         }
     });
 
-    // 3. Drip Client Prices (Link inside text message)
+    // 3. Drip Client Prices
     bot.action('product_drip', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -65,7 +98,7 @@ Select your desired plan below:
 Select your desired plan below:
 🔗 [Click here to view Drip Client update](https://t.me/c/4332593307/3/4)`;
 
-            await ctx.editMessageText(dripText, {
+            await ctx.editMessageText(phantomText || dripText, {
                 parse_mode: 'Markdown',
                 disable_web_page_preview: true,
                 ...Markup.inlineKeyboard([
@@ -80,10 +113,13 @@ Select your desired plan below:
         }
     });
 
-    // 4. Plan click hote hi exact utne amount ka FamPay QR generate karna
-    bot.action(/^buy_\w+_(\d+)$/, async (ctx) => {
+    // 4. Plan click hote hi QR generate karna (Fixing the edit vs reply error)
+    bot.action(/^buy_(phantom|drip)_(\d+)$/, async (ctx) => {
         await ctx.answerCbQuery('Generating Payment QR...');
-        const amount = parseInt(ctx.match[1], 10);
+        const productType = ctx.match[1];
+        const planDuration = ctx.match[2];
+        const amount = parseInt(planDuration, 10);
+        const internalKey = `${productType}_${amount}`;
 
         try {
             const { qrImageUrl, upiString } = generateUpiQrUrl(amount, '9694421148@fam', 'Aditya');
@@ -99,12 +135,15 @@ Select your desired plan below:
 1. Is QR code ko apne **FamPay** ya kisi bhi UPI app se scan karke payment karein.
 2. Payment hone ke baad niche **"✅ Payment Done"** par click karein.`;
 
+            // Purana message delete karke naya photo message bhejna taki error na aaye
+            await ctx.deleteMessage().catch(() => {});
+
             await ctx.replyWithPhoto(qrImageUrl, {
                 caption: paymentText,
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
                     [Markup.button.url('⚡ Pay via UPI App', upiString)],
-                    [Markup.button.callback(`✅ Payment Done (₹${amount})`, `verify_pay_${amount}`)],
+                    [Markup.button.callback(`✅ Payment Done`, `verify_key_${internalKey}`)],
                     [Markup.button.callback('◀️ Back to Shop', 'shop_menu')]
                 ])
             });
@@ -114,14 +153,53 @@ Select your desired plan below:
         }
     });
 
-    // 5. Back to Main Menu Handler
+    // 5. Payment Verification & Automatic Key Delivery System
+    bot.action(/^verify_key_(.+)$/, async (ctx) => {
+        const internalKey = ctx.match[1]; // jaise phantom_95 ya drip_99
+        await ctx.answerCbQuery('Verifying payment and fetching key...');
+
+        // Stock check karo aur key assign karke list se delete karo
+        const assignedKey = consumeKey(internalKey);
+
+        if (!assignedKey) {
+            return ctx.reply('⚠️ Filhal is plan ki stock me koi key available nahi hai! Kripya admin (@adityachoudhary5) se contact karein, jald hi stock refill kar diya jayega.');
+        }
+
+        const successText = 
+`🎉 **PAYMENT SUCCESSFUL & KEY DELIVERED!** 🎉
+
+──────────────────
+🔑 **Your License Key:**
+\`${assignedKey}\`
+──────────────────
+
+⚠️ Is key ko sambhal kar rakhein. Yeh key ab stock se hata di gayi hai taaki koi aur use na kar sake.`;
+
+        try {
+            await ctx.editMessageCaption(successText, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🛍️ Back to Shop', 'shop_menu')]
+                ])
+            });
+        } catch (e) {
+            await ctx.reply(successText, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🛍️ Back to Shop', 'shop_menu')]
+                ])
+            });
+        }
+    });
+
+    // 6. Back to Main Menu Handler
     bot.action('back_to_start', async (ctx) => {
         try {
             await ctx.answerCbQuery();
             const welcomeText = 
-`🌸 **– ADITYA PANEL SHOP –** 🌸
+`⌨️ – ADITYA PANEL SHOP – ⌨️
 
-🌸 **Hello, ${ctx.from.first_name || 'User'}!**
+🌸 Hello, ${ctx.from.first_name || 'User'}!
 
 ⚝ **Premium digital keys, instant delivery.**
 
@@ -146,7 +224,7 @@ Select your desired plan below:
                 ])
             });
         } catch (error) {
-            console.error('Error in back_to_start action:', error);
+            console.error('Error in back_to_start:', error);
         }
     });
 }

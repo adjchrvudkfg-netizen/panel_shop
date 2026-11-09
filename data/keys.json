@@ -1,0 +1,21 @@
+{
+  "phantom_95": [
+    "PHANTOM-1DAY-ABC111",
+    "PHANTOM-1DAY-XYZ222"
+  ],
+  "phantom_145": [
+    "PHANTOM-3DAY-DEF333"
+  ],
+  "phantom_320": [
+    "PHANTOM-7DAY-GHI444"
+  ],
+  "drip_99": [
+    "DRIP-1DAY-JKL555"
+  ],
+  "drip_299": [
+    "DRIP-7DAY-MNO666"
+  ],
+  "drip_599": [
+    "DRIP-30DAY-PQR777"
+  ]
+}
