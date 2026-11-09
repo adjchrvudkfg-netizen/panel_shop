@@ -1,7 +1,8 @@
 const { Markup } = require('telegraf');
+const { generateUpiQrUrl } = require('../services/paymentService');
 
 function setupShopHandler(bot) {
-    // 1. Shop Menu - Products list (Phantom & Drip Client)
+    // 1. Shop Menu - Products list
     bot.action('shop_menu', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -23,7 +24,7 @@ Please select a product below to view prices and buy:`;
         }
     });
 
-    // 2. Phantom Product Prices View
+    // 2. Phantom Prices
     bot.action('product_phantom', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -35,9 +36,9 @@ Select your desired plan below:`;
             await ctx.editMessageText(phantomText, {
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
-                    [Markup.button.callback('1 Day - ₹95', 'buy_phantom_1d')],
-                    [Markup.button.callback('3 Days - ₹145', 'buy_phantom_3d')],
-                    [Markup.button.callback('7 Days - ₹320', 'buy_phantom_7d')],
+                    [Markup.button.callback('1 Day - ₹95', 'buy_phantom_95')],
+                    [Markup.button.callback('3 Days - ₹145', 'buy_phantom_145')],
+                    [Markup.button.callback('7 Days - ₹320', 'buy_phantom_320')],
                     [Markup.button.callback('🔙 Back to Shop', 'shop_menu')]
                 ])
             });
@@ -46,7 +47,7 @@ Select your desired plan below:`;
         }
     });
 
-    // 3. Drip Client Product Prices View
+    // 3. Drip Client Prices
     bot.action('product_drip', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -58,9 +59,9 @@ Select your desired plan below:`;
             await ctx.editMessageText(dripText, {
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
-                    [Markup.button.callback('1 Day - ₹35', 'buy_drip_1d')],
-                    [Markup.button.callback('3 Days - ₹65', 'buy_drip_3d')],
-                    [Markup.button.callback('7 Days - ₹170', 'buy_drip_7d')],
+                    [Markup.button.callback('1 Day - ₹99', 'buy_drip_99')],
+                    [Markup.button.callback('7 Days - ₹299', 'buy_drip_299')],
+                    [Markup.button.callback('30 Days - ₹599', 'buy_drip_599')],
                     [Markup.button.callback('🔙 Back to Shop', 'shop_menu')]
                 ])
             });
@@ -69,16 +70,41 @@ Select your desired plan below:`;
         }
     });
 
-    // 4. Purchase Click Handlers (Jab koi plan select kare)
-    bot.action(/^buy_(phantom|drip)_(\w+)$/, async (ctx) => {
-        await ctx.answerCbQuery('Processing order...');
-        const product = ctx.match[1];
-        const duration = ctx.match[2];
-        
-        await ctx.reply(`🛒 Aapne **${product.toUpperCase()} (${duration.toUpperCase()})** select kiya hai!\n\n⚠️ Key purchase karne ke liye kripya pehle **'Add Balance'** se wallet me balance add karein.`);
+    // 4. Plan click hote hi exact utne amount ka FamPay QR generate karna
+    bot.action(/^buy_\w+_(\d+)$/, async (ctx) => {
+        await ctx.answerCbQuery('Generating Payment QR...');
+        const amount = parseInt(ctx.match[1], 10);
+
+        try {
+            const { qrImageUrl, upiString } = generateUpiQrUrl(amount, '9694421148@fam', 'Aditya');
+
+            const paymentText = 
+`🏛️ **FAMCORP PAYMENT GATEWAY**
+
+──────────────────
+👤 **UPI ID:** \`9694421148@fam\`
+💰 **Amount:** ₹${amount}
+──────────────────
+
+1. Is QR code ko apne **FamPay** ya kisi bhi UPI app se scan karke payment karein.
+2. Payment hone ke baad niche **"✅ Payment Done"** par click karein.`;
+
+            await ctx.replyWithPhoto(qrImageUrl, {
+                caption: paymentText,
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.url('⚡ Pay via UPI App', upiString)],
+                    [Markup.button.callback(`✅ Payment Done (₹${amount})`, `verify_pay_${amount}`)],
+                    [Markup.button.callback('◀️ Back to Shop', 'shop_menu')]
+                ])
+            });
+        } catch (err) {
+            console.error('QR Gen Error:', err);
+            await ctx.reply('⚠️ QR generate karne me kuch dikkat aayi. Kripya dubara try karein.');
+        }
     });
 
-    // 5. Back to Start / Main Menu Handler
+    // 5. Back to Main Menu Handler
     bot.action('back_to_start', async (ctx) => {
         try {
             await ctx.answerCbQuery();

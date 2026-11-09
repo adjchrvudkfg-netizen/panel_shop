@@ -1,6 +1,7 @@
 const { Markup } = require('telegraf');
 
 function setupProfileHandler(bot) {
+    // 1. My Profile View with Back Button
     bot.action('my_profile', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -12,28 +13,35 @@ function setupProfileHandler(bot) {
 💰 **Wallet Balance:** ₹0
 📦 **Total Orders:** 0`;
 
-            await ctx.reply(profileText, { parse_mode: 'Markdown' });
+            await ctx.editMessageText(profileText, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🔙 Back to Main Menu', 'back_to_start')]
+                ])
+            });
         } catch (error) {
             console.error('Error in my_profile action:', error);
         }
     });
 
-    bot.action('support', async (ctx) => {
+    // 2. My Orders View with Back Button
+    bot.action('my_orders', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            await ctx.reply('🎧 For any support or issues, contact admin: @YourAdminUsername');
-        } catch (error) {
-            console.error('Error in support action:', error);
-        }
-    });
+            const ordersText = 
+`📦 **MY ORDERS**
 
-    // Baaki actions ke liye fallback handler
-    const actionsList = ['how_to_use', 'referral', 'daily_spin', 'selling_proof', 'leaderboard'];
-    actionsList.forEach((act) => {
-        bot.action(act, async (ctx) => {
-            await ctx.answerCbQuery();
-            await ctx.reply(`✨ Feature '${act.replace(/_/g, ' ')}' is coming soon!`);
-        });
+Aapke paas abhi koi active orders nahi hain.`;
+
+            await ctx.editMessageText(ordersText, {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🔙 Back to Main Menu', 'back_to_start')]
+                ])
+            });
+        } catch (error) {
+            console.error('Error in my_orders action:', error);
+        }
     });
 }
 
