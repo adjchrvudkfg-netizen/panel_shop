@@ -16,7 +16,7 @@ setupProfileHandler(bot);
 
 // Launch Bot
 bot.launch({ dropPendingUpdates: true }).then(() => {
-  console.log('🤖 Bot is successfully running!');
+    console.log('🤖 Bot is successfully running!');
 });
 
 // Enable graceful stop
