@@ -1,39 +1,32 @@
-const { mainMenuKeyboard } = require('../utils/keyboards');
+const { Markup } = require('telegraf');
 
 function setupStartHandler(bot) {
-  bot.start((ctx) => {
-    const userName = ctx.from.first_name || 'User';
-    const userId = ctx.from.id;
-    const walletBalance = 80; // Dummy balance for mock UI
+    bot.start((ctx) => {
+        const welcomeText = 
+`🌸 **– ADITYA PANEL SHOP –** 🌸
 
-    const welcomeText = `
-🌸 **- ADITYA PANEL SHOP -** 🌸
+🌸 **Hello, ${ctx.from.first_name || 'User'}!**
 
-🎀 Hello, ${userName}!
+⚝ **Premium digital keys, instant delivery.**
 
-🛡️ **Premium digital keys, instant delivery.**
+– 🛒 **Wide product catalog**
+– ⚡ **Instant key delivery**
+– 💲 **Multiple payment gateways**
+– 🛡️ **24/7 admin support**
 
-- 🛒 **Wide product catalog**
-- ⚡ **Instant key delivery**
-- 💳 **Multiple payment gateways**
-- 👥 **Referrals & spin-to-win**
-- 🛡️ **24/7 admin support**
+**Tap any button below to begin.**
 
-Tap any button below to begin.
------------------------------------
-👤 **User ID:** ${userId}
-💰 **Wallet Balance:** ₹0 (~$0.85)
-    `;
+──────────────────
+👤 User ID: \`${ctx.from.id}\`
+💰 Wallet Balance: ₹0 (~$0.85)`;
 
-    ctx.replyWithMarkdown(welcomeText, mainMenuKeyboard);
-  });
-
-  bot.action('main_menu', (ctx) => {
-    ctx.editMessageText(
-      `🌸 **- ADITYA PANEL SHOP -** 🌸\n\nTap any button below to begin.`,
-      { parse_mode: 'Markdown', ...mainMenuKeyboard }
-    );
-  });
+        ctx.replyWithMarkdown(welcomeText, Markup.inlineKeyboard([
+            [Markup.button.callback('🛍️ Shop', 'shop_menu')],
+            [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📦 My Orders', 'my_orders')],
+            [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
+            [Markup.button.callback('🎧 Support', 'support')]
+        ]));
+    });
 }
 
 module.exports = { setupStartHandler };
