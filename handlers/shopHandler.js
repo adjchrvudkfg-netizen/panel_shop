@@ -2,14 +2,6 @@ const { Markup } = require('telegraf');
 const fs = require('fs');
 const path = require('path');
 
-// Helper function to generate FamPay UPI QR URL
-function generateUpiQrUrl(amount, upiId = '9694421148@fam', payeeName = 'Aditya') {
-    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
-    const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&margin=2`;
-    return { upiString, qrImageUrl };
-}
-
-// Helper to get keys from keys.json
 function getStoredKeys() {
     try {
         const filePath = path.join(__dirname, '../data/keys.json');
@@ -23,15 +15,14 @@ function getStoredKeys() {
     return {};
 }
 
-// Helper to remove and return a used key
 function consumeKey(productKey) {
     try {
         const filePath = path.join(__dirname, '../data/keys.json');
         const keysData = getStoredKeys();
         
         if (keysData[productKey] && keysData[productKey].length > 0) {
-            const assignedKey = keysData[productKey].shift(); // Pehli key nikal lo
-            fs.writeFileSync(filePath, JSON.stringify(keysData, null, 2)); // Save updated list
+            const assignedKey = keysData[productKey].shift();
+            fs.writeFileSync(filePath, JSON.stringify(keysData, null, 2));
             return assignedKey;
         }
     } catch (e) {
@@ -41,15 +32,11 @@ function consumeKey(productKey) {
 }
 
 function setupShopHandler(bot) {
-    // 1. Shop Menu
+    // Shop Menu
     bot.action('shop_menu', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            const shopText = 
-`🛍️ **– ADITYA PANEL SHOP –** 🛍️
-
-Please select a product below to view prices and buy:`;
-
+            const shopText = `🛍️ **– ADITYA PANEL SHOP –** 🛍️\n\nPlease select a product below to view prices and buy:`;
             await ctx.editMessageText(shopText, {
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
@@ -63,16 +50,11 @@ Please select a product below to view prices and buy:`;
         }
     });
 
-    // 2. Phantom Prices
+    // Phantom Prices
     bot.action('product_phantom', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            const phantomText = 
-`👻 **PHANTOM PANEL - PRICING** 👻
-
-Select your desired plan below:
-🔗 [Click here to view Phantom update](https://t.me/c/4332593307/2/5)`;
-
+            const phantomText = `👻 **PHANTOM PANEL - PRICING** 👻\n\nSelect your desired plan below:\n🔗 [Click here to view Phantom update](https://t.me/c/4332593307/2/5)`;
             await ctx.editMessageText(phantomText, {
                 parse_mode: 'Markdown',
                 disable_web_page_preview: true,
@@ -88,17 +70,12 @@ Select your desired plan below:
         }
     });
 
-    // 3. Drip Client Prices
+    // Drip Client Prices (Fixed)
     bot.action('product_drip', async (ctx) => {
         try {
             await ctx.answerCbQuery();
-            const dripText = 
-`💧 **DRIP CLIENT - PRICING** 💧
-
-Select your desired plan below:
-🔗 [Click here to view Drip Client update](https://t.me/c/4332593307/3/4)`;
-
-            await ctx.editMessageText(phantomText || dripText, {
+            const dripText = `💧 **DRIP CLIENT - PRICING** 💧\n\nSelect your desired plan below:\n🔗 [Click here to view Drip Client update](https://t.me/c/4332593307/3/4)`;
+            await ctx.editMessageText(dripText, {
                 parse_mode: 'Markdown',
                 disable_web_page_preview: true,
                 ...Markup.inlineKeyboard([
@@ -113,33 +90,43 @@ Select your desired plan below:
         }
     });
 
-    // 4. Plan click hote hi QR generate karna (Fixing the edit vs reply error)
+    // Buy Plan & Generate Payment Gateway Message
     bot.action(/^buy_(phantom|drip)_(\d+)$/, async (ctx) => {
-        await ctx.answerCbQuery('Generating Payment QR...');
+        await ctx.answerCbQuery('Opening Payment Gateway...');
         const productType = ctx.match[1];
         const planDuration = ctx.match[2];
         const amount = parseInt(planDuration, 10);
         const internalKey = `${productType}_${amount}`;
+        const upiId = '9694421148@fam';
 
-        try {
-            const { qrImageUrl, upiString } = generateUpiQrUrl(amount, '9694421148@fam', 'Aditya');
+        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent('Aditya')}&am=${amount}&cu=INR`;
+        const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&margin=2&format=png`;
 
-            const paymentText = 
+        const paymentText = 
 `🏛️ **FAMCORP PAYMENT GATEWAY**
 
 ──────────────────
-👤 **UPI ID:** \`9694421148@fam\`
+👤 **UPI ID:** \`${upiId}\`
 💰 **Amount:** ₹${amount}
 ──────────────────
 
-1. Is QR code ko apne **FamPay** ya kisi bhi UPI app se scan karke payment karein.
-2. Payment hone ke baad niche **"✅ Payment Done"** par click karein.`;
+1. Niche diye gaye button par click karke payment karein ya QR scan karein.
+2. Payment hone ke baad **"✅ Payment Done"** par click karein.`;
 
-            // Purana message delete karke naya photo message bhejna taki error na aaye
+        try {
             await ctx.deleteMessage().catch(() => {});
-
             await ctx.replyWithPhoto(qrImageUrl, {
                 caption: paymentText,
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.url('⚡ Pay via FamPay / UPI App', upiString)],
+                    [Markup.button.callback(`✅ Payment Done`, `verify_key_${internalKey}`)],
+                    [Markup.button.callback('◀️ Back to Shop', 'shop_menu')]
+                ])
+            });
+        } catch (err) {
+            // Fallback agar photo send na ho paye toh text message bhej dega taaki ruka na rahe
+            await ctx.reply(paymentText + `\n\n🔗 **Direct Payment Link:** ${upiString}`, {
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
                     [Markup.button.url('⚡ Pay via UPI App', upiString)],
@@ -147,22 +134,18 @@ Select your desired plan below:
                     [Markup.button.callback('◀️ Back to Shop', 'shop_menu')]
                 ])
             });
-        } catch (err) {
-            console.error('QR Gen Error:', err);
-            await ctx.reply('⚠️ QR generate karne me kuch dikkat aayi. Kripya dubara try karein.');
         }
     });
 
-    // 5. Payment Verification & Automatic Key Delivery System
+    // Verify & Auto Key Delivery
     bot.action(/^verify_key_(.+)$/, async (ctx) => {
-        const internalKey = ctx.match[1]; // jaise phantom_95 ya drip_99
-        await ctx.answerCbQuery('Verifying payment and fetching key...');
+        const internalKey = ctx.match[1];
+        await ctx.answerCbQuery('Verifying payment & fetching key...');
 
-        // Stock check karo aur key assign karke list se delete karo
         const assignedKey = consumeKey(internalKey);
 
         if (!assignedKey) {
-            return ctx.reply('⚠️ Filhal is plan ki stock me koi key available nahi hai! Kripya admin (@adityachoudhary5) se contact karein, jald hi stock refill kar diya jayega.');
+            return ctx.reply('⚠️ Filhal is plan ki stock me koi key available nahi hai! Kripya admin (@adityachoudhary5) se contact karein.');
         }
 
         const successText = 
@@ -173,7 +156,7 @@ Select your desired plan below:
 \`${assignedKey}\`
 ──────────────────
 
-⚠️ Is key ko sambhal kar rakhein. Yeh key ab stock se hata di gayi hai taaki koi aur use na kar sake.`;
+⚠️ Yeh key ab stock se hata di gayi hai.`;
 
         try {
             await ctx.editMessageCaption(successText, {
@@ -192,7 +175,7 @@ Select your desired plan below:
         }
     });
 
-    // 6. Back to Main Menu Handler
+    // Back to Main Menu
     bot.action('back_to_start', async (ctx) => {
         try {
             await ctx.answerCbQuery();
