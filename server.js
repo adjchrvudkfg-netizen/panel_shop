@@ -9,34 +9,61 @@ const bot = new Telegraf(BOT_TOKEN);
 
 const app = express();
 app.use(express.json());
-
-// Public folder ko static serve karna
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. Dynamic QR Generator API Endpoint for Website
-app.get('/api/generate-qr', (req, res) => {
-    const amount = req.query.amount || 95;
-    const upiId = '9694421148@fam';
-    const payeeName = 'Aditya';
-    
-    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
-    const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&margin=2&format=png`;
+// /start command (Main Welcome Menu)
+bot.start(async (ctx) => {
+    try {
+        const welcomeText = 
+`⌨️ – ADITYA PANEL SHOP – ⌨️
 
-    res.json({ upiString, qrImageUrl, upiId, amount });
+🌸 Hello, ${ctx.from.first_name || 'User'}!
+
+⚝ **Premium digital keys, instant delivery.**
+
+– 🛒 **Wide product catalog**
+– ⚡ **Instant key delivery**
+– 💲 **Multiple payment gateways**
+– 🛡️ **24/7 admin support**
+
+**Tap any button below to begin.**
+
+──────────────────
+👤 User ID: \`${ctx.from.id}\`
+💰 Wallet Balance: ₹0 (~$0.85)`;
+
+        await ctx.reply(welcomeText, {
+            parse_mode: 'Markdown',
+            ...Telegraf.Markup.inlineKeyboard([
+                [Telegraf.Markup.button.callback('🛍️ Shop', 'shop_menu')],
+                [Telegraf.Markup.button.callback('💳 Add Balance', 'add_balance'), Telegraf.Markup.button.callback('📦 My Orders', 'my_orders')],
+                [Telegraf.Markup.button.callback('👤 My Profile', 'my_profile'), Telegraf.Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
+                [Telegraf.Markup.button.url('🎧 Support', 'https://t.me/adityachoudhary5')]
+            ])
+        });
+    } catch (e) {
+        console.error('Error in /start:', e);
+    }
 });
 
-// Handlers ko safely import karna
+// Handlers ko import karke bot ke sath connect karna
 try {
-    const { setupStartHandler } = require('./handlers/startHandler');
     const { setupShopHandler } = require('./handlers/shopHandler');
     const { setupWalletHandler } = require('./handlers/walletHandler');
 
-    setupStartHandler(bot);
     setupShopHandler(bot);
     setupWalletHandler(bot);
+    console.log('✅ All handlers loaded successfully!');
 } catch (e) {
-    console.log('Handlers load note:', e.message);
+    console.error('⚠️ Handler loading error:', e.message);
 }
+
+// Dummy Placeholders for unhandled buttons
+['my_orders', 'my_profile'].forEach((action) => {
+    bot.action(action, async (ctx) => {
+        await ctx.answerCbQuery('Feature coming soon!');
+    });
+});
 
 // Telegram Bot Launch
 bot.launch().then(() => {
@@ -51,7 +78,7 @@ app.listen(PORT, () => {
     console.log(`🌐 Web Store Server running on port ${PORT}`);
 });
 
-// Enable graceful stop
+// Graceful Stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 

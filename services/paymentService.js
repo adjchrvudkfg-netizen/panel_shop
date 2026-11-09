@@ -1,13 +1,13 @@
 const { Markup } = require('telegraf');
 
-// 1. Universal QR URL Generator function
+// Universal QR URL Generator
 function generateUpiQrUrl(amount, upiId = '9694421148@fam', payeeName = 'Aditya') {
     const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
     const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&format=png`;
     return { upiString, qrImageUrl };
 }
 
-// 2. Universal Payment Gateway Sender (Shop aur Wallet dono ke liye)
+// Universal Payment Gateway Sender
 async function sendPaymentGateway(ctx, amount, callbackActionName, backActionName = 'shop_menu') {
     const upiId = '9694421148@fam';
     const { upiString, qrImageUrl } = generateUpiQrUrl(amount, upiId, 'Aditya');
