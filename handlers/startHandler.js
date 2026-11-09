@@ -1,11 +1,7 @@
-const { Markup } = require('telegraf');
+const welcomeText = 
+`/start – ADITYA PANEL SHOP – /start
 
-function setupStartHandler(bot) {
-    bot.start((ctx) => {
-        const welcomeText = 
-`🌸 **– ADITYA PANEL SHOP –** 🌸
-
-🌸 **Hello, ${ctx.from.first_name || 'User'}!**
+/start Hello, ${ctx.from.first_name || 'User'}!
 
 ⚝ **Premium digital keys, instant delivery.**
 
@@ -19,14 +15,3 @@ function setupStartHandler(bot) {
 ──────────────────
 👤 User ID: \`${ctx.from.id}\`
 💰 Wallet Balance: ₹0 (~$0.85)`;
-
-        ctx.replyWithMarkdown(welcomeText, Markup.inlineKeyboard([
-            [Markup.button.callback('🛍️ Shop', 'shop_menu')],
-            [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📦 My Orders', 'my_orders')],
-            [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
-            [Markup.button.url('🎧 Support', 'https://t.me/adityachoudhary5')]
-        ]));
-    });
-}
-
-module.exports = { setupStartHandler };
