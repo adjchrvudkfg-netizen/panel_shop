@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aditya Panel Shop - Dynamic Payment</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 20px; }
+        .card { background: #1e293b; max-width: 400px; margin: auto; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; }
+        button { background: #2563eb; color: #fff; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1d4ed8; }
+        img { width: 220px; height: 220px; margin-top: 15px; border-radius: 8px; border: 4px solid #fff; }
+        .upi-box { background: #334155; padding: 10px; border-radius: 6px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🌸 Aditya Panel Shop 🌸</h2>
+    <p>Select plan to generate payment QR:</p>
+
+    <select id="planSelect">
+        <option value="95">Phantom Panel - 1 Day (₹95)</option>
+        <option value="145">Phantom Panel - 3 Days (₹145)</option>
+        <option value="320">Phantom Panel - 7 Days (₹320)</option>
+        <option value="99">Drip Client - 1 Day (₹99)</option>
+        <option value="299">Drip Client - 7 Days (₹299)</option>
+        <option value="599">Drip Client - 30 Days (₹599)</option>
+    </select>
+
+    <button onclick="generateQR()">Generate Payment QR</button>
+
+    <div id="qrArea" style="display:none;">
+        <hr style="border-color: #475569; margin: 20px 0;">
+        <div class="upi-box">UPI: 9694421148@fam</div>
+        <img id="qrImage" src="" alt="FamPay QR Code">
+        <p>Scan with FamPay / GPay / PhonePe</p>
+        <a id="payBtn" href="" style="display:block; background:#16a34a; color:#fff; text-decoration:none; padding:12px; border-radius:6px; font-weight:bold;">⚡ Pay via UPI App Direct</a>
+    </div>
+</div>
+
+<script>
+async function generateQR() {
+    const amount = document.getElementById('planSelect').value;
+    const res = await fetch(`/api/generate-qr?amount=${amount}`);
+    const data = await res.json();
+
+    document.getElementById('qrImage').src = data.qrImageUrl;
+    document.getElementById('payBtn').href = data.upiString;
+    document.getElementById('qrArea').style.display = 'block';
+}
+</script>
+
+</body>
+</html>

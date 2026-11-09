@@ -1,53 +1,60 @@
-require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const express = require('express');
+const path = require('path');
 
-// Apne handlers folder se saare handlers import karein
-const { setupStartHandler } = require('./handlers/startHandler');
-const { setupShopHandler } = require('./handlers/shopHandler');
-const { setupProfileHandler } = require('./handlers/profileHandler');
-const { setupWalletHandler } = require('./handlers/walletHandler');
+// Bot Token configuration
+const BOT_TOKEN = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
+const bot = new Telegraf(BOT_TOKEN);
 
-const token = process.env.BOT_TOKEN;
-const PORT = process.env.PORT || 3000;
-
-if (!token) {
-    console.error('BOT_TOKEN is required!');
-    process.exit(1);
-}
-
-const bot = new Telegraf(token);
 const app = express();
-
-// Express JSON middleware
 app.use(express.json());
 
-// Render URL aur Webhook configuration
-const RENDER_URL = process.env.RENDER_EXTERNAL_URL || `https://panel-shop.onrender.com`;
-const webhookPath = `/telegraf/${bot.secretPathComponent()}`;
+// Public folder ko static serve karna taaki website khul sake
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(bot.webhookCallback(webhookPath));
+// 1. Dynamic QR Generator API Endpoint for Website
+app.get('/api/generate-qr', (req, res) => {
+    const amount = req.query.amount || 95;
+    const upiId = '9694421148@fam';
+    const payeeName = 'Aditya';
+    
+    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
+    const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&margin=2&format=png`;
 
-bot.telegram.setWebhook(`${RENDER_URL}${webhookPath}`).then(() => {
-    console.log(`🔗 Webhook successfully set to: ${RENDER_URL}${webhookPath}`);
+    res.json({
+        upiString,
+        qrImageUrl,
+        upiId,
+        amount
+    });
 });
 
-// --- Register All Handlers ---
-if (typeof setupStartHandler === 'function') setupStartHandler(bot);
-if (typeof setupShopHandler === 'function') setupShopHandler(bot);
-if (typeof setupProfileHandler === 'function') setupProfileHandler(bot);
-if (typeof setupWalletHandler === 'function') setupWalletHandler(bot);
+// Handlers ko import karna
+try {
+    const { setupStartHandler } = require('./handlers/startHandler');
+    const { setupShopHandler } = require('./handlers/shopHandler');
+    const { setupWalletHandler } = require('./handlers/walletHandler');
 
-// Basic Health Check Route for Render
-app.get('/', (req, res) => {
-    res.send('🤖 Telegram Panel Shop Bot is running live via Webhook!');
+    setupStartHandler(bot);
+    setupShopHandler(bot);
+    setupWalletHandler(bot);
+} catch (e) {
+    console.log('Handlers note:', e.message);
+}
+
+// Telegram Bot Launch
+bot.launch().then(() => {
+    console.log('🤖 Telegram Bot is running...');
+}).catch((err) => {
+    console.error('Bot launch error:', err);
 });
 
-// Server Start
+// Express Server Launch (Render port par chalega)
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server is listening on port ${PORT}`);
+    console.log(`🌐 Web Store Server running on port ${PORT}`);
 });
 
-// Graceful Stop
+// Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
