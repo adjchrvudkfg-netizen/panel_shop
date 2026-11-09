@@ -7,9 +7,9 @@ function setupStartHandler(bot) {
             const userId = ctx.from.id;
 
             const welcomeText = 
-`/start – ADITYA PANEL SHOP – /start
+`⌨️ – ADITYA PANEL SHOP – ⌨️
 
-/start Hello, ${firstName}!
+🌸 Hello, ${firstName}!
 
 ⚝ **Premium digital keys, instant delivery.**
 
