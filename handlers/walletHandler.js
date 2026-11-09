@@ -1,11 +1,16 @@
 const { Markup } = require('telegraf');
 const { generateUpiQrUrl } = require('../services/paymentService');
 
+// Track karne ke liye ki kis user ko amount enter karna hai
+const waitingForAmount = {};
+
 function setupWalletHandler(bot) {
-    // 1. Add Balance click hone par direct Amount Select karne ka menu dikhana
+    // 1. Add Balance click hone par custom amount mangna
     bot.action('add_balance', async (ctx) => {
         try {
             await ctx.answerCbQuery();
+            waitingForAmount[ctx.from.id] = true;
+
             const text = 
 `🏛️ **ADD BALANCE - FAMCORP**
 
@@ -13,14 +18,11 @@ function setupWalletHandler(bot) {
 Method: 💚 FamPay UPI (\`9694421148@fam\`)
 ──────────────────
 
-Apna amount select karein jise aap add karna chahte hain:`;
+💬 **Kripya chat me apna amount type karke bhejein** (Jaise: \`100\`, \`500\`, \`1500\`, etc.):`;
 
             await ctx.editMessageText(text, {
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
-                    [Markup.button.callback('💵 ₹50', 'pay_amt_50'), Markup.button.callback('💵 ₹100', 'pay_amt_100')],
-                    [Markup.button.callback('💵 ₹200', 'pay_amt_200'), Markup.button.callback('💵 ₹500', 'pay_amt_500')],
-                    [Markup.button.callback('💵 ₹1000', 'pay_amt_1000'), Markup.button.callback('💵 ₹2000', 'pay_amt_2000')],
                     [Markup.button.callback('◀️ Back to Menu', 'back_to_start')]
                 ])
             });
@@ -29,15 +31,31 @@ Apna amount select karein jise aap add karna chahte hain:`;
         }
     });
 
-    // 2. Jaise hi user koi amount select kare, turant FamPay QR generate ho jaye
-    bot.action(/^pay_amt_(\d+)$/, async (ctx) => {
-        await ctx.answerCbQuery('Generating QR...');
-        const amount = parseInt(ctx.match[1], 10);
+    // 2. Dealer style: User jo bhi text/number type karega usko amount maan kar QR banana
+    bot.on('text', async (ctx) => {
+        const userId = ctx.from.id;
+        
+        // Agar user balance add karne ki state me hai
+        if (waitingForAmount[userId]) {
+            const textAmount = ctx.message.text.trim();
+            const amount = parseInt(textAmount, 10);
 
-        // FamPay UPI QR generate karein
-        const { qrImageUrl, upiString } = generateUpiQrUrl(amount, '9694421148@fam', 'Aditya');
+            if (isNaN(amount) || amount <= 0) {
+                return ctx.reply('⚠️ Kripya ek valid number enter karein (Jaise: 100, 500).');
+            }
 
-        const paymentText = 
+            if (amount > 50000) {
+                return ctx.reply('⚠️ Maximum limit ₹50,000 tak ki hai.');
+            }
+
+            // State clear kar do
+            delete waitingForAmount[userId];
+
+            // FamPay UPI QR generate karein
+            try {
+                const { qrImageUrl, upiString } = generateUpiQrUrl(amount, '9694421148@fam', 'Aditya');
+
+                const paymentText = 
 `🏛️ **FAMCORP PAYMENT GATEWAY**
 
 ──────────────────
@@ -48,19 +66,19 @@ Apna amount select karein jise aap add karna chahte hain:`;
 1. Is QR code ko apne **FamPay** ya kisi bhi UPI app se scan karein.
 2. Payment complete hone ke baad niche **"✅ Payment Done"** button par click karein.`;
 
-        try {
-            await ctx.replyWithPhoto(qrImageUrl, {
-                caption: paymentText,
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.url('⚡ Pay via UPI App', upiString)],
-                    [Markup.button.callback(`✅ Payment Done (₹${amount})`, `verify_pay_${amount}`)],
-                    [Markup.button.callback('◀️ Choose Another Amount', 'add_balance')]
-                ])
-            });
-        } catch (err) {
-            console.error('Error sending QR photo:', err);
-            await ctx.reply('⚠️ QR code generate karne me kuch dikkat aayi. Kripya dubara try karein.');
+                await ctx.replyWithPhoto(qrImageUrl, {
+                    caption: paymentText,
+                    parse_mode: 'Markdown',
+                    ...Markup.inlineKeyboard([
+                        [Markup.button.url('⚡ Pay via UPI App', upiString)],
+                        [Markup.button.callback(`✅ Payment Done (₹${amount})`, `verify_pay_${amount}`)],
+                        [Markup.button.callback('◀️ Cancel / Back', 'add_balance')]
+                    ])
+                });
+            } catch (err) {
+                console.error('QR Generation Error:', err);
+                await ctx.reply('⚠️ QR generate karne me kuch dikkat aayi. Kripya dobara try karein.');
+            }
         }
     });
 
