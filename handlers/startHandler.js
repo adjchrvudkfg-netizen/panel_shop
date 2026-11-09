@@ -22,7 +22,7 @@ function setupStartHandler(bot) {
 Tap any button below to begin.
 -----------------------------------
 👤 **User ID:** ${userId}
-💰 **Wallet Balance:** ₹80 (~$0.85)
+💰 **Wallet Balance:** ₹0 (~$0.85)
     `;
 
     ctx.replyWithMarkdown(welcomeText, mainMenuKeyboard);
@@ -30,7 +30,7 @@ Tap any button below to begin.
 
   bot.action('main_menu', (ctx) => {
     ctx.editMessageText(
-      `🌸 **- VETLAM PANEL SHOP -** 🌸\n\nTap any button below to begin.`,
+      `🌸 **- ADITYA PANEL SHOP -** 🌸\n\nTap any button below to begin.`,
       { parse_mode: 'Markdown', ...mainMenuKeyboard }
     );
   });
