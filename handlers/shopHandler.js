@@ -30,22 +30,23 @@ Please select a product below to view prices and buy:`;
         }
     });
 
-    // 2. Phantom Prices (Link attached)
+    // 2. Phantom Prices (Link inside text message)
     bot.action('product_phantom', async (ctx) => {
         try {
             await ctx.answerCbQuery();
             const phantomText = 
 `👻 **PHANTOM PANEL - PRICING** 👻
 
-Select your desired plan below:`;
+Select your desired plan below:
+🔗 [Click here to view Phantom update](https://t.me/c/4332593307/2/5)`;
 
             await ctx.editMessageText(phantomText, {
                 parse_mode: 'Markdown',
+                disable_web_page_preview: true,
                 ...Markup.inlineKeyboard([
                     [Markup.button.callback('1 Day - ₹95', 'buy_phantom_95')],
                     [Markup.button.callback('3 Days - ₹145', 'buy_phantom_145')],
                     [Markup.button.callback('7 Days - ₹320', 'buy_phantom_320')],
-                    [Markup.button.url('🔗 View Phantom Channel', 'https://t.me/c/4332593307/2/5')],
                     [Markup.button.callback('🔙 Back to Shop', 'shop_menu')]
                 ])
             });
@@ -54,22 +55,23 @@ Select your desired plan below:`;
         }
     });
 
-    // 3. Drip Client Prices (Link attached)
+    // 3. Drip Client Prices (Link inside text message)
     bot.action('product_drip', async (ctx) => {
         try {
             await ctx.answerCbQuery();
             const dripText = 
 `💧 **DRIP CLIENT - PRICING** 💧
 
-Select your desired plan below:`;
+Select your desired plan below:
+🔗 [Click here to view Drip Client update](https://t.me/c/4332593307/3/4)`;
 
             await ctx.editMessageText(dripText, {
                 parse_mode: 'Markdown',
+                disable_web_page_preview: true,
                 ...Markup.inlineKeyboard([
                     [Markup.button.callback('1 Day - ₹99', 'buy_drip_99')],
                     [Markup.button.callback('7 Days - ₹299', 'buy_drip_299')],
                     [Markup.button.callback('30 Days - ₹599', 'buy_drip_599')],
-                    [Markup.button.url('🔗 View Drip Client Channel', 'https://t.me/c/4332593307/3/4')],
                     [Markup.button.callback('🔙 Back to Shop', 'shop_menu')]
                 ])
             });
