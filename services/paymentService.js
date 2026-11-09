@@ -20,25 +20,23 @@ async function sendPaymentGateway(ctx, amount, callbackActionName, backActionNam
 💰 **Amount:** ₹${amount}
 ──────────────────
 
-1. Niche diye gaye button se payment karein.
-2. Payment ke baad **"✅ Payment Done"** dabayein.`;
+1. Kisi bhi UPI App (PhonePe, GPay, FamPay) se upar diye gaye QR ko scan karein ya **[Click Here to Pay via UPI App](${upiString})** par click karein.
+2. Payment hone ke baad neeche **"✅ Payment Done"** button dabayein.`;
 
     try {
         await ctx.replyWithPhoto(qrImageUrl, {
             caption: paymentText,
             parse_mode: 'Markdown',
             ...Markup.inlineKeyboard([
-                [Markup.button.url('⚡ Pay via FamPay / UPI', upiString)],
                 [Markup.button.callback('✅ Payment Done', callbackActionName)],
                 [Markup.button.callback('◀️ Back', backActionName)]
             ])
         });
     } catch (err) {
         console.error('QR Send Error:', err);
-        await ctx.reply(paymentText + `\n\n🔗 [Click to Pay via UPI App](${upiString})`, {
+        await ctx.reply(paymentText, {
             parse_mode: 'Markdown',
             ...Markup.inlineKeyboard([
-                [Markup.button.url('⚡ Pay via UPI', upiString)],
                 [Markup.button.callback('✅ Payment Done', callbackActionName)],
                 [Markup.button.callback('◀️ Back', backActionName)]
             ])
