@@ -1,6 +1,6 @@
 const { Markup } = require('telegraf');
 
-// Helper function jo seedha yhi QR URL bana dega
+// Helper function to generate FamPay UPI QR URL
 function generateUpiQrUrl(amount, upiId = '9694421148@fam', payeeName = 'Aditya') {
     const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
     const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&margin=2`;
@@ -30,7 +30,7 @@ Please select a product below to view prices and buy:`;
         }
     });
 
-    // 2. Phantom Prices
+    // 2. Phantom Prices (Link attached)
     bot.action('product_phantom', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -45,6 +45,7 @@ Select your desired plan below:`;
                     [Markup.button.callback('1 Day - ₹95', 'buy_phantom_95')],
                     [Markup.button.callback('3 Days - ₹145', 'buy_phantom_145')],
                     [Markup.button.callback('7 Days - ₹320', 'buy_phantom_320')],
+                    [Markup.button.url('🔗 View Phantom Channel', 'https://t.me/c/4332593307/2/5')],
                     [Markup.button.callback('🔙 Back to Shop', 'shop_menu')]
                 ])
             });
@@ -53,7 +54,7 @@ Select your desired plan below:`;
         }
     });
 
-    // 3. Drip Client Prices
+    // 3. Drip Client Prices (Link attached)
     bot.action('product_drip', async (ctx) => {
         try {
             await ctx.answerCbQuery();
@@ -68,6 +69,7 @@ Select your desired plan below:`;
                     [Markup.button.callback('1 Day - ₹99', 'buy_drip_99')],
                     [Markup.button.callback('7 Days - ₹299', 'buy_drip_299')],
                     [Markup.button.callback('30 Days - ₹599', 'buy_drip_599')],
+                    [Markup.button.url('🔗 View Drip Client Channel', 'https://t.me/c/4332593307/3/4')],
                     [Markup.button.callback('🔙 Back to Shop', 'shop_menu')]
                 ])
             });
