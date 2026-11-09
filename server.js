@@ -1,6 +1,7 @@
 const { Telegraf } = require('telegraf');
 const express = require('express');
 const path = require('path');
+const https = require('https');
 
 // Bot Token configuration
 const BOT_TOKEN = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
@@ -9,7 +10,7 @@ const bot = new Telegraf(BOT_TOKEN);
 const app = express();
 app.use(express.json());
 
-// Public folder ko static serve karna taaki website khul sake
+// Public folder ko static serve karna
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 1. Dynamic QR Generator API Endpoint for Website
@@ -21,15 +22,10 @@ app.get('/api/generate-qr', (req, res) => {
     const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
     const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(upiString)}&size=300&margin=2&format=png`;
 
-    res.json({
-        upiString,
-        qrImageUrl,
-        upiId,
-        amount
-    });
+    res.json({ upiString, qrImageUrl, upiId, amount });
 });
 
-// Handlers ko import karna
+// Handlers ko safely import karna
 try {
     const { setupStartHandler } = require('./handlers/startHandler');
     const { setupShopHandler } = require('./handlers/shopHandler');
@@ -39,17 +35,17 @@ try {
     setupShopHandler(bot);
     setupWalletHandler(bot);
 } catch (e) {
-    console.log('Handlers note:', e.message);
+    console.log('Handlers load note:', e.message);
 }
 
 // Telegram Bot Launch
 bot.launch().then(() => {
-    console.log('🤖 Telegram Bot is running...');
+    console.log('🤖 Telegram Bot is running successfully...');
 }).catch((err) => {
     console.error('Bot launch error:', err);
 });
 
-// Express Server Launch (Render port par chalega)
+// Express Server Launch
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🌐 Web Store Server running on port ${PORT}`);
@@ -59,16 +55,12 @@ app.listen(PORT, () => {
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-// ==========================================
-// YAHAN FILE KE BILKUL LAST ME ISKO PASTE KAR DO:
-// ==========================================
-const https = require('https');
+// Self-Ping Keep-Alive (Render sleep rokne ke liye)
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://drake-panel-8py1.onrender.com';[span_0](start_span)[span_0](end_span)
-
 setInterval(() => {
     https.get(RENDER_URL, (res) => {
-        console.log(`[Keep-Alive] Self-ping status: ${res.statusCode}`);
+        console.log(`[Keep-Alive] Pinged server, status: ${res.statusCode}`);
     }).on('error', (err) => {
         console.error('[Keep-Alive] Ping error:', err.message);
     });
-}, 10 * 60 * 1000); // Har 10 minute me server ko khud ping karega
+}, 10 * 60 * 1000); // Har 10 minute me ping karega
