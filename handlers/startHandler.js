@@ -24,7 +24,7 @@ function setupStartHandler(bot) {
             [Markup.button.callback('🛍️ Shop', 'shop_menu')],
             [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📦 My Orders', 'my_orders')],
             [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
-            [Markup.button.callback('🎧 Support', 'support')]
+            [Markup.button.url('🎧 Support', 'https://t.me/adityachoudhary5')]
         ]));
     });
 }
