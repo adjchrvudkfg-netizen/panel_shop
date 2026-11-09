@@ -58,3 +58,17 @@ app.listen(PORT, () => {
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+// ==========================================
+// YAHAN FILE KE BILKUL LAST ME ISKO PASTE KAR DO:
+// ==========================================
+const https = require('https');
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://drake-panel-8py1.onrender.com';[span_0](start_span)[span_0](end_span)
+
+setInterval(() => {
+    https.get(RENDER_URL, (res) => {
+        console.log(`[Keep-Alive] Self-ping status: ${res.statusCode}`);
+    }).on('error', (err) => {
+        console.error('[Keep-Alive] Ping error:', err.message);
+    });
+}, 10 * 60 * 1000); // Har 10 minute me server ko khud ping karega
