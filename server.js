@@ -67,8 +67,7 @@ http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bot is running successfully!');
 })
-// Render Port Binding Server
-const http = require('http');
+// Render Port Binding Server (Ensure const http is not declared twice)
 const PORT = process.env.PORT || 3000;
 
 http.createServer((req, res) => {
