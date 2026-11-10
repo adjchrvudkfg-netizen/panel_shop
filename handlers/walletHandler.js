@@ -1,89 +1,147 @@
 const { Markup } = require('telegraf');
+const { getNumPadKeyboard } = require('../utils/keyboards');
 
-module.exports = (bot) => {
-  bot.action(/buy_(.+)_([^_]+)/, async (ctx) => {
-    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
+const UPI_ID = '9694421148@fam';
+const userAmountInput = {};
+const pendingPayments = {};
 
-    const product = ctx.match[1].toUpperCase();
-    const duration = ctx.match[2];
-    const refId = 'REF_' + Math.floor(100000 + Math.random() * 900000);
+function setupWalletHandler(bot, users, ADMIN_ID) {
+  bot.action('add_balance', (ctx) => {
+    ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    userAmountInput[userId] = '';
 
-    let price = '9';
-    if (duration === '6h') price = '66';
-    if (duration === '1d' && product === 'DRAKE') price = '150';
-    if (duration === '7d') price = '500';
-    if (duration === '1d' && product === 'PHANTOM') price = '200';
-    if (duration === '30d') price = '999';
+    const text = `🏛 **Custom Amount**\n` +
+                 `_____________________\n` +
+                 `Method: 💚 FamPay UPI\n(${UPI_ID})\n` +
+                 `Min: ₹1 | Max: ₹5,000\n` +
+                 `_____________________\n\n` +
+                 `Apna amount enter karo aur payment complete karke balance add karwao.\n\n` +
+                 `🔻 Amount: ₹0\n` +
+                 `🔻 Amount type karo - buttons se:`;
 
-    await ctx.editMessageText(
-      `🛒 **Payment Order Summary:**\n\n📦 **Product:** ${product} (${duration})\n💰 **Amount:** ₹${price}\n🆔 **Ref ID:** \`${refId}\`\n\n💳 **Pay via FamPay UPI:**\n\`9694421148@fam\`\n\n*(Pay to the UPI ID above, then click 'Submit UTR' to verify payment)*`,
-      {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('✅ Submit UTR / Payment Done', `verify_${refId}_${price}`)],
-          [Markup.button.callback('❌ Cancel', 'open_shop')]
-        ])
-      }
-    );
+    return ctx.editMessageText(text, getNumPadKeyboard());
   });
 
-  bot.action(/verify_(.+)_(\d+)/, async (ctx) => {
-    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
-    const refId = ctx.match[1];
-    const amount = ctx.match[2];
+  bot.action(/num_(\d|del|confirm)/, async (ctx) => {
+    const action = ctx.match[1];
+    const userId = ctx.from.id;
+    let currentVal = userAmountInput[userId] || '';
 
-    // Automatic UTR / Payment Validation simulation
-    // (Aap yahan real payment gateway ya database check laga sakte hain)
-    const isPaymentValid = true; // Agar UTR match hua toh true
+    if (action === 'del') {
+      currentVal = currentVal.slice(0, -1);
+    } else if (action === 'confirm') {
+      const amount = parseInt(currentVal, 10);
+      if (!amount || amount < 1) {
+        return ctx.answerCbQuery('⚠️ Kripya kam se kam ₹1 ya usse zyada amount enter karein.', { show_alert: true });
+      }
 
-    if (isPaymentValid) {
-      const licenseKey = 'KEY-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-      await ctx.editMessageText(
-        `✅ **Payment Verified Successfully!**\n\n🆔 **Ref ID:** \`${refId}\`\n💰 **Amount Paid:** ₹${amount}\n\n🔑 **Your License Key:**\n\`${licenseKey}\`\n\nThank you for purchasing from Aditya Panel Shop!`,
-        {
-          parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback('🏠 Main Menu', 'main_menu')]
-          ])
-        }
-      );
+      ctx.answerCbQuery();
+      const upiUrl = `upi://pay?pa=${UPI_ID}&pn=AdityaShop&am=${amount}&cu=INR`;
+      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUrl)}`;
+
+      const paymentId = `PAY_${Date.now()}`;
+      pendingPayments[paymentId] = { userId, amount, status: 'PENDING' };
+
+      const caption = `🏛 **FAMCORP PAYMENT GATEWAY**\n` +
+                      `_____________________\n\n` +
+                      `👤 **UPI ID:** \`${UPI_ID}\`\n` +
+                      `💰 **Amount:** ₹${amount}\n` +
+                      `_____________________\n\n` +
+                      `1. Kisi bhi UPI App (PhonePe, GPay, FamPay) se upar diye gaye QR ko scan karein.\n` +
+                      `2. Payment hone ke baad neeche "✅ Payment Done" button dabayein.`;
+
+      await ctx.deleteMessage().catch(() => {});
+      return ctx.replyWithPhoto(qrImageUrl, {
+        caption: caption,
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('✅ Payment Done', `paydone_${paymentId}`)],
+          [Markup.button.callback('⬅️ Back', 'add_balance')]
+        ])
+      });
     } else {
-      await ctx.editMessageText(
-        `❌ **Payment Verification Failed!**\n\nNo matching transaction found for Ref ID: \`${refId}\`. Please check your payment or contact support.`,
-        {
+      if (currentVal.length < 5) {
+        currentVal += action;
+      }
+    }
+
+    userAmountInput[userId] = currentVal;
+    const displayAmount = currentVal === '' ? '0' : currentVal;
+
+    const text = `🏛 **Custom Amount**\n` +
+                 `_____________________\n` +
+                 `Method: 💚 FamPay UPI\n(${UPI_ID})\n` +
+                 `Min: ₹1 | Max: ₹5,000\n` +
+                 `_____________________\n\n` +
+                 `Apna amount enter karo aur payment complete karke balance add karwao.\n\n` +
+                 `🔻 Amount: ₹${displayAmount}\n` +
+                 `🔻 Amount type karo - buttons se:`;
+
+    try {
+      if (ctx.callbackQuery.message.photo) {
+        await ctx.editMessageCaption(text, {
           parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback('🔄 Try Again', 'open_shop')],
-            [Markup.button.url('🎧 Support', 'https://t.me/ADITYACHOUDHARY5')]
-          ])
-        }
-      );
+          ...getNumPadKeyboard()
+        });
+      } else {
+        await ctx.editMessageText(text, {
+          parse_mode: 'Markdown',
+          ...getNumPadKeyboard()
+        });
+      }
+    } catch (err) {}
+  });
+
+  bot.action(/paydone_(.+)/, async (ctx) => {
+    ctx.answerCbQuery();
+    const paymentId = ctx.match[1];
+    const payment = pendingPayments[paymentId];
+
+    if (!payment) return ctx.reply('⚠️ Payment session expired.');
+
+    await ctx.reply('⏳ **Aapka payment request admin ko bhej diya gaya hai. Verification ke baad balance add ho jayega!**');
+
+    const adminText = `🔔 **NEW PAYMENT APPROVAL REQUEST**\n\n` +
+                      `👤 **User ID:** \`${payment.userId}\`\n` +
+                      `👤 **Name:** ${ctx.from.first_name}\n` +
+                      `💰 **Amount:** ₹${payment.amount}\n` +
+                      `🆔 **Txn Ref:** \`${paymentId}\``;
+
+    return bot.telegram.sendMessage(ADMIN_ID, adminText, {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard([
+        [Markup.button.callback('✅ Approve', `approve_${paymentId}`), Markup.button.callback('❌ Reject', `reject_${paymentId}`)]
+      ])
+    });
+  });
+
+  bot.action(/approve_(.+)/, async (ctx) => {
+    ctx.answerCbQuery('Approved!');
+    const paymentId = ctx.match[1];
+    const payment = pendingPayments[paymentId];
+
+    if (payment && payment.status === 'PENDING') {
+      payment.status = 'APPROVED';
+      if (!users[payment.userId]) users[payment.userId] = { balance: 0, orders: [] };
+      users[payment.userId].balance += payment.amount;
+
+      await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n✅ **STATUS: APPROVED by Admin**`);
+      return bot.telegram.sendMessage(payment.userId, `🎉 **Payment Successful!**\n\n₹${payment.amount} aapke wallet me add kar diya gaya h.\n💰 Naya Balance: ₹${users[payment.userId].balance}`);
     }
   });
 
-  bot.action('add_balance', async (ctx) => {
-    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
-    await ctx.editMessageText(
-      `💳 **Add Balance to Wallet:**\n\nPay to FamPay UPI: \`9694421148@fam\`\nSend screenshot & UTR to support for balance top-up.`,
-      {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('🔙 Back to Main Menu', 'main_menu')]
-        ])
-      }
-    );
-  });
+  bot.action(/reject_(.+)/, async (ctx) => {
+    ctx.answerCbQuery('Rejected!');
+    const paymentId = ctx.match[1];
+    const payment = pendingPayments[paymentId];
 
-  bot.action('my_orders', async (ctx) => {
-    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
-    await ctx.editMessageText(
-      `📜 **Your Orders:**\n\nYou have no active or past orders yet.`,
-      {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('🔙 Back to Main Menu', 'main_menu')]
-        ])
-      }
-    );
+    if (payment && payment.status === 'PENDING') {
+      payment.status = 'REJECTED';
+      await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n❌ **STATUS: REJECTED by Admin**`);
+      return bot.telegram.sendMessage(payment.userId, `❌ Aapka ₹${payment.amount} ka payment verify nahi ho paya.`);
+    }
   });
-};
+}
+
+module.exports = { setupWalletHandler };
