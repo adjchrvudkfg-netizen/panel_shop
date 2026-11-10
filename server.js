@@ -49,7 +49,7 @@ bot.action('main_menu', (ctx) => {
 // Setup Handlers
 setupProfileHandler(bot, users);
 setupWalletHandler(bot, users, ADMIN_ID);
-setupShopHandler(bot, users);
+setupShopHandler(bot, users, ADMIN_ID); // Yahan ADMIN_ID pass karna zaroori hai
 
 // Support
 bot.action('support', (ctx) => {
