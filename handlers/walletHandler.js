@@ -1,147 +1,134 @@
 const { Markup } = require('telegraf');
-const { getNumPadKeyboard } = require('../utils/keyboards');
 
-const UPI_ID = '9694421148@fam';
-const userAmountInput = {};
-const pendingPayments = {};
+// Aap yahan apni Telegram Admin ID daal dein (jaise: 123456789)
+const ADMIN_CHAT_ID = process.env.ADMIN_ID || '8805135936'; 
 
-function setupWalletHandler(bot, users, ADMIN_ID) {
-  bot.action('add_balance', (ctx) => {
-    ctx.answerCbQuery();
-    const userId = ctx.from.id;
-    userAmountInput[userId] = '';
+module.exports = (bot) => {
+  // Product ya Add Balance select hone par QR / Payment info dikhana
+  bot.action(/buy_(.+)_([^_]+)/, async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
 
-    const text = `🏛 **Custom Amount**\n` +
-                 `_____________________\n` +
-                 `Method: 💚 FamPay UPI\n(${UPI_ID})\n` +
-                 `Min: ₹1 | Max: ₹5,000\n` +
-                 `_____________________\n\n` +
-                 `Apna amount enter karo aur payment complete karke balance add karwao.\n\n` +
-                 `🔻 Amount: ₹0\n` +
-                 `🔻 Amount type karo - buttons se:`;
+    const product = ctx.match[1].toUpperCase();
+    const duration = ctx.match[2];
+    const refId = 'REF_' + Math.floor(100000 + Math.random() * 900000);
 
-    return ctx.editMessageText(text, getNumPadKeyboard());
-  });
+    let price = '9';
+    if (duration === '6h') price = '66';
+    if (duration === '1d' && product === 'DRAKE') price = '150';
+    if (duration === '7d') price = '500';
+    if (duration === '1d' && product === 'PHANTOM') price = '200';
+    if (duration === '30d') price = '999';
 
-  bot.action(/num_(\d|del|confirm)/, async (ctx) => {
-    const action = ctx.match[1];
-    const userId = ctx.from.id;
-    let currentVal = userAmountInput[userId] || '';
-
-    if (action === 'del') {
-      currentVal = currentVal.slice(0, -1);
-    } else if (action === 'confirm') {
-      const amount = parseInt(currentVal, 10);
-      if (!amount || amount < 1) {
-        return ctx.answerCbQuery('⚠️ Kripya kam se kam ₹1 ya usse zyada amount enter karein.', { show_alert: true });
-      }
-
-      ctx.answerCbQuery();
-      const upiUrl = `upi://pay?pa=${UPI_ID}&pn=AdityaShop&am=${amount}&cu=INR`;
-      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUrl)}`;
-
-      const paymentId = `PAY_${Date.now()}`;
-      pendingPayments[paymentId] = { userId, amount, status: 'PENDING' };
-
-      const caption = `🏛 **FAMCORP PAYMENT GATEWAY**\n` +
-                      `_____________________\n\n` +
-                      `👤 **UPI ID:** \`${UPI_ID}\`\n` +
-                      `💰 **Amount:** ₹${amount}\n` +
-                      `_____________________\n\n` +
-                      `1. Kisi bhi UPI App (PhonePe, GPay, FamPay) se upar diye gaye QR ko scan karein.\n` +
-                      `2. Payment hone ke baad neeche "✅ Payment Done" button dabayein.`;
-
-      await ctx.deleteMessage().catch(() => {});
-      return ctx.replyWithPhoto(qrImageUrl, {
-        caption: caption,
+    await ctx.editMessageText(
+      `🛒 **Payment Order Summary:**\n\n📦 **Product:** ${product} (${duration})\n💰 **Amount:** ₹${price}\n🆔 **Ref ID:** \`${refId}\`\n\n💳 **Pay via FamPay UPI:**\n\`9694421148@fam\`\n\n1. Scan QR or pay to UPI above.\n2. Click 'Payment Done' below after paying.`,
+      {
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([
-          [Markup.button.callback('✅ Payment Done', `paydone_${paymentId}`)],
-          [Markup.button.callback('⬅️ Back', 'add_balance')]
+          [Markup.button.callback('✅ Payment Done', `verify_${refId}_${price}_${product}`)],
+          [Markup.button.callback('🔙 Back', 'open_shop')]
         ])
-      });
-    } else {
-      if (currentVal.length < 5) {
-        currentVal += action;
       }
+    );
+  });
+
+  bot.action('add_balance', async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
+    const refId = 'BAL_' + Math.floor(100000 + Math.random() * 900000);
+    
+    await ctx.editMessageText(
+      `💳 **Add Balance to Wallet:**\n\nPay to FamPay UPI: \`9694421148@fam\`\n🆔 **Ref ID:** \`${refId}\`\n\nPay any amount and click below to notify admin for approval.`,
+      {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('✅ Payment Done', `verify_${refId}_5_BalanceTopUp`)],
+          [Markup.button.callback('🔙 Back to Main Menu', 'main_menu')]
+        ])
+      }
+    );
+  });
+
+  // User jab Payment Done dabayega, tab Admin ke paas approval request jayegi
+  bot.action(/verify_(.+)_(\d+)_(.+)/, async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
+    const refId = ctx.match[1];
+    const amount = ctx.match[2];
+    const product = ctx.match[3];
+    const userId = ctx.from.id;
+    const username = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name;
+
+    await ctx.editMessageText(
+      `⏳ **Aapka payment request admin ko bhej diya gaya hai. Verification ke baad key/balance add ho jayega!**\n\n🆔 Ref ID: \`${refId}\``,
+      { parse_mode: 'Markdown' }
+    );
+
+    // Admin (`@ADITYACHOUDHARY5` / Admin ID) ko approval request bhejna
+    try {
+      await bot.telegram.sendMessage(
+        ADMIN_CHAT_ID,
+        `🔔 **New Payment Verification Request!**\n\n👤 **User:** ${username} (\`[${userId}](tg://user?id=${userId})\`)\n📦 **Item:** ${product}\n💰 **Amount:** ₹${amount}\n🆔 **Ref ID:** \`${refId}\``,
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [
+              Markup.button.callback('✅ Approve & Give Key', `approve_${userId}_${refId}_${product}`),
+              Markup.button.callback('❌ Reject', `reject_${userId}_${refId}`)
+            ]
+          ])
+        }
+      );
+    } catch (err) {
+      console.error('Failed to send message to admin:', err);
     }
+  });
 
-    userAmountInput[userId] = currentVal;
-    const displayAmount = currentVal === '' ? '0' : currentVal;
+  // Admin jab Approve par click karega
+  bot.action(/approve_(\d+)_(.+)_(.+)/, async (ctx) => {
+    try { await ctx.answerCbQuery('Approved successfully!').catch(() => {}); } catch (e) {}
+    const userId = ctx.match[1];
+    const refId = ctx.match[2];
+    const product = ctx.match[3];
 
-    const text = `🏛 **Custom Amount**\n` +
-                 `_____________________\n` +
-                 `Method: 💚 FamPay UPI\n(${UPI_ID})\n` +
-                 `Min: ₹1 | Max: ₹5,000\n` +
-                 `_____________________\n\n` +
-                 `Apna amount enter karo aur payment complete karke balance add karwao.\n\n` +
-                 `🔻 Amount: ₹${displayAmount}\n` +
-                 `🔻 Amount type karo - buttons se:`;
+    const licenseKey = 'KEY-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    // User ko key bhejna
+    try {
+      await bot.telegram.sendMessage(
+        userId,
+        `🎉 **Payment Approved by Admin!**\n\n🆔 Ref ID: \`${refId}\`\n📦 Product: ${product}\n\n🔑 **Your License Key:**\n\`${licenseKey}\`\n\nThank you for purchasing!`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (e) {}
+
+    await ctx.editMessageText(`✅ **Approved** for User ID: \`${userId}\` | Ref: \`${refId}\``, { parse_mode: 'Markdown' });
+  });
+
+  // Admin jab Reject par click karega
+  bot.action(/reject_(\d+)_(.+)/, async (ctx) => {
+    try { await ctx.answerCbQuery('Rejected.').catch(() => {}); } catch (e) {}
+    const userId = ctx.match[1];
+    const refId = ctx.match[2];
 
     try {
-      if (ctx.callbackQuery.message.photo) {
-        await ctx.editMessageCaption(text, {
-          parse_mode: 'Markdown',
-          ...getNumPadKeyboard()
-        });
-      } else {
-        await ctx.editMessageText(text, {
-          parse_mode: 'Markdown',
-          ...getNumPadKeyboard()
-        });
+      await bot.telegram.sendMessage(
+        userId,
+        `❌ **Payment Rejected / Failed**\n\nYour payment for Ref ID: \`${refId}\` was rejected by admin. Please contact support @ADITYACHOUDHARY5 if this was a mistake.`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (e) {}
+
+    await ctx.editMessageText(`❌ **Rejected** for User ID: \`${userId}\` | Ref: \`${refId}\``, { parse_mode: 'Markdown' });
+  });
+
+  bot.action('my_orders', async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
+    await ctx.editMessageText(
+      `📜 **Your Orders:**\n\nYou have no active or past orders yet.`,
+      {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🔙 Back to Main Menu', 'main_menu')]
+        ])
       }
-    } catch (err) {}
+    );
   });
-
-  bot.action(/paydone_(.+)/, async (ctx) => {
-    ctx.answerCbQuery();
-    const paymentId = ctx.match[1];
-    const payment = pendingPayments[paymentId];
-
-    if (!payment) return ctx.reply('⚠️ Payment session expired.');
-
-    await ctx.reply('⏳ **Aapka payment request admin ko bhej diya gaya hai. Verification ke baad balance add ho jayega!**');
-
-    const adminText = `🔔 **NEW PAYMENT APPROVAL REQUEST**\n\n` +
-                      `👤 **User ID:** \`${payment.userId}\`\n` +
-                      `👤 **Name:** ${ctx.from.first_name}\n` +
-                      `💰 **Amount:** ₹${payment.amount}\n` +
-                      `🆔 **Txn Ref:** \`${paymentId}\``;
-
-    return bot.telegram.sendMessage(ADMIN_ID, adminText, {
-      parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('✅ Approve', `approve_${paymentId}`), Markup.button.callback('❌ Reject', `reject_${paymentId}`)]
-      ])
-    });
-  });
-
-  bot.action(/approve_(.+)/, async (ctx) => {
-    ctx.answerCbQuery('Approved!');
-    const paymentId = ctx.match[1];
-    const payment = pendingPayments[paymentId];
-
-    if (payment && payment.status === 'PENDING') {
-      payment.status = 'APPROVED';
-      if (!users[payment.userId]) users[payment.userId] = { balance: 0, orders: [] };
-      users[payment.userId].balance += payment.amount;
-
-      await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n✅ **STATUS: APPROVED by Admin**`);
-      return bot.telegram.sendMessage(payment.userId, `🎉 **Payment Successful!**\n\n₹${payment.amount} aapke wallet me add kar diya gaya h.\n💰 Naya Balance: ₹${users[payment.userId].balance}`);
-    }
-  });
-
-  bot.action(/reject_(.+)/, async (ctx) => {
-    ctx.answerCbQuery('Rejected!');
-    const paymentId = ctx.match[1];
-    const payment = pendingPayments[paymentId];
-
-    if (payment && payment.status === 'PENDING') {
-      payment.status = 'REJECTED';
-      await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n❌ **STATUS: REJECTED by Admin**`);
-      return bot.telegram.sendMessage(payment.userId, `❌ Aapka ₹${payment.amount} ka payment verify nahi ho paya.`);
-    }
-  });
-}
-
-module.exports = { setupWalletHandler };
+};

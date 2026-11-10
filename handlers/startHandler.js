@@ -21,6 +21,7 @@ module.exports = (bot) => {
     );
   });
 
+  // Profile Button Fix
   bot.action('my_profile', async (ctx) => {
     try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
     const userId = ctx.from.id;
