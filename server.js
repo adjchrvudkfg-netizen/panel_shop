@@ -63,16 +63,10 @@ bot.action('support', (ctx) => {
 // Express server for Render port binding
 const http = require('http');
 const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Bot is running successfully!');
-})
-// Render Port Binding Server (Ensure const http is not declared twice)
-const PORT = process.env.PORT || 3000;
 
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Bot is alive and running!');
+  res.end('Bot is running successfully!');
 }).listen(PORT, () => {
   console.log(`HTTP server listening on port ${PORT}`);
 });
