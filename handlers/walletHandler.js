@@ -3,7 +3,7 @@ const { Markup } = require('telegraf');
 const ADMIN_CHAT_ID = process.env.ADMIN_ID || '8805135936'; 
 const userSessions = {};
 
-// Aapke FamPay QR Code ki direct public image link (Aap ise apne QR image URL se badal sakte hain)
+// FamPay QR Code image URL
 const QR_IMAGE_URL = 'https://i.ibb.co/1z1z1z1/fampay-qr.jpg'; 
 
 module.exports = (bot) => {
@@ -50,7 +50,7 @@ module.exports = (bot) => {
     await renderKeypad(ctx, '0');
   });
 
-  // Keypad actions (1,2,3...0, Delete, Clear)
+  // Keypad actions
   bot.action(/kp_(.+)/, async (ctx) => {
     try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
     const userId = ctx.from.id;
@@ -165,4 +165,47 @@ module.exports = (bot) => {
     const licenseKey = 'KEY-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
     try {
-      if (product === '
+      if (product === 'BalanceTopUp') {
+        await bot.telegram.sendMessage(
+          userId,
+          `🎉 Payment Approved by Admin!\n\nRef ID: ${refId}\nAdded Balance: ₹${amount}\n\nThank you for topping up!`
+        );
+      } else {
+        await bot.telegram.sendMessage(
+          userId,
+          `🎉 Payment Approved by Admin!\n\nRef ID: ${refId}\nProduct: ${product}\n\nYour License Key:\n${licenseKey}\n\nThank you for purchasing!`
+        );
+      }
+    } catch (e) {}
+
+    try { await ctx.editMessageText(`✅ Approved for User ID: ${userId} | Ref: ${refId}`); } catch (e) {}
+  });
+
+  // Admin Reject
+  bot.action(/reject_(\d+)_(.+)/, async (ctx) => {
+    try { await ctx.answerCbQuery('Rejected.').catch(() => {}); } catch (e) {}
+    const userId = ctx.match[1];
+    const refId = ctx.match[2];
+
+    try {
+      await bot.telegram.sendMessage(
+        userId,
+        `❌ Payment Rejected / Failed\n\nYour payment for Ref ID: ${refId} was rejected by admin. Please contact support @ADITYACHOUDHARY5 if this was a mistake.`
+      );
+    } catch (e) {}
+
+    try { await ctx.editMessageText(`❌ Rejected for User ID: ${userId} | Ref: ${refId}`); } catch (e) {}
+  });
+
+  bot.action('my_orders', async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
+    await ctx.editMessageText(
+      `📜 Your Orders:\n\nYou have no active or past orders yet.`,
+      {
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🔙 Back to Main Menu', 'main_menu')]
+        ])
+      }
+    );
+  });
+};
