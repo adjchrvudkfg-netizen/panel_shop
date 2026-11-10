@@ -66,6 +66,14 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bot is running successfully!');
+})
+// Render Port Binding Server
+const http = require('http');
+const PORT = process.env.PORT || 3000;
+
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot is alive and running!');
 }).listen(PORT, () => {
-  console.log(`Web server listening on port ${PORT}`);
+  console.log(`HTTP server listening on port ${PORT}`);
 });
