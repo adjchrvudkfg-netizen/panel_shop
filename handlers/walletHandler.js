@@ -1,5 +1,4 @@
 const { Markup } = require('telegraf');
-const qr = require('qr-image');
 const { getNumPadKeyboard } = require('../utils/keyboards');
 
 const UPI_ID = '9694421148@fam';
@@ -39,7 +38,7 @@ function setupWalletHandler(bot, users, ADMIN_ID) {
 
       ctx.answerCbQuery();
       const upiUrl = `upi://pay?pa=${UPI_ID}&pn=AdityaShop&am=${amount}&cu=INR`;
-      const qrPng = qr.imageSync(upiUrl, { type: 'png' });
+      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUrl)}`;
 
       const paymentId = `PAY_${Date.now()}`;
       pendingPayments[paymentId] = { userId, amount, status: 'PENDING' };
@@ -53,7 +52,7 @@ function setupWalletHandler(bot, users, ADMIN_ID) {
                       `2. Payment hone ke baad neeche "✅ Payment Done" button dabayein.`;
 
       await ctx.deleteMessage();
-      return ctx.replyWithPhoto({ source: qrPng }, {
+      return ctx.replyWithPhoto(qrImageUrl, {
         caption: caption,
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([
@@ -125,7 +124,7 @@ function setupWalletHandler(bot, users, ADMIN_ID) {
   bot.action(/reject_(.+)/, async (ctx) => {
     ctx.answerCbQuery('Rejected!');
     const paymentId = ctx.match[1];
-    const payment = pendingPayments[paymentId];
+    const payment, payment = pendingPayments[paymentId];
 
     if (payment && payment.status === 'PENDING') {
       payment.status = 'REJECTED';
