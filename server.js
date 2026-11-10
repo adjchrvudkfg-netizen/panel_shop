@@ -4,10 +4,9 @@ const http = require('http');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Import all modular handlers safely
+// Import active handlers only
 require('./handlers/startHandler')(bot);
 require('./handlers/shopHandler')(bot);
-require('./handlers/profileHandler')(bot);
 require('./handlers/walletHandler')(bot);
 
 // Express server setup for Render port binding
