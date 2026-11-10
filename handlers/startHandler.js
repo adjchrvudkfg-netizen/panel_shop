@@ -1,42 +1,59 @@
 const { Markup } = require('telegraf');
 
-function setupStartHandler(bot) {
-    bot.start(async (ctx) => {
-        try {
-            const firstName = ctx.from.first_name || 'User';
-            const userId = ctx.from.id;
+module.exports = (bot) => {
+  bot.start(async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
 
-            const welcomeText = 
-`⌨️ – ADITYA PANEL SHOP – ⌨️
+    const userName = ctx.from.first_name || 'User';
+    const userId = ctx.from.id;
 
-🌸 Hello, ${firstName}!
+    ctx.reply(
+      `═══ - ADITYA PANEL SHOP - ═══\n\n🌸 Hello, ${userName}!\n\n☆ Premium digital keys, instant delivery.\n\nTap any button below to begin.\n\n──────────────────\n👤 User ID: \`${userId}\`\n💰 Wallet Balance: ₹0`,
+      {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🛍️ Shop', 'open_shop')],
+          [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📜 My Orders', 'my_orders')],
+          [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('🔥 PAID_PUSH 💯', 'https://t.me/TATSER_PAID_PUSH')],
+          [Markup.button.url('🎧 Support', 'https://t.me/ADITYACHOUDHARY5')]
+        ])
+      }
+    );
+  });
 
-⚝ **Premium digital keys, instant delivery.**
+  bot.action('my_profile', async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
+    const userId = ctx.from.id;
+    const userName = ctx.from.first_name || 'User';
 
-– 🛒 **Wide product catalog**
-– ⚡ **Instant key delivery**
-– 💲 **Multiple payment gateways**
-– 🛡️ **24/7 admin support**
+    await ctx.editMessageText(
+      `👤 **User Profile:**\n\n🆔 **User ID:** \`${userId}\`\n👤 **Name:** ${userName}\n💰 **Balance:** ₹0\n\n📦 Check your active licenses or orders below:`,
+      {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('📜 My Orders', 'my_orders')],
+          [Markup.button.callback('🔙 Back to Main Menu', 'main_menu')]
+        ])
+      }
+    );
+  });
 
-**Tap any button below to begin.**
+  bot.action('main_menu', async (ctx) => {
+    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
+    const userName = ctx.from.first_name || 'User';
+    const userId = ctx.from.id;
 
-──────────────────
-👤 User ID: \`${userId}\`
-💰 Wallet Balance: ₹0 (~$0.85)`;
-
-            await ctx.reply(welcomeText, {
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.callback('🛍️ Shop', 'shop_menu')],
-                    [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📦 My Orders', 'my_orders')],
-                    [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
-                    [Markup.button.url('🎧 Support', 'https://t.me/adityachoudhary5')]
-                ])
-            });
-        } catch (error) {
-            console.error('Error in start handler:', error);
-        }
-    });
-}
-
-module.exports = { setupStartHandler };
+    await ctx.editMessageText(
+      `═══ - ADITYA PANEL SHOP - ═══\n\n🌸 Hello, ${userName}!\n\n☆ Premium digital keys, instant delivery.\n\nTap any button below to begin.\n\n──────────────────\n👤 User ID: \`${userId}\`\n💰 Wallet Balance: ₹0`,
+      {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🛍️ Shop', 'open_shop')],
+          [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📜 My Orders', 'my_orders')],
+          [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('🔥 PAID_PUSH 💯', 'https://t.me/TATSER_PAID_PUSH')],
+          [Markup.button.url('🎧 Support', 'https://t.me/ADITYACHOUDHARY5')]
+        ])
+      }
+    );
+  });
+};
