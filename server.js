@@ -60,5 +60,12 @@ bot.action('support', (ctx) => {
   });
 });
 
-bot.launch();
-console.log("Modular bot running successfully...");
+// Express server for Render port binding
+const http = require('http');
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot is running successfully!');
+}).listen(PORT, () => {
+  console.log(`Web server listening on port ${PORT}`);
+});
