@@ -1,12 +1,13 @@
 const { Markup } = require('telegraf');
 
 const ADMIN_CHAT_ID = process.env.ADMIN_ID || '8805135936'; 
-
-// Temporary session store for amount typing
 const userSessions = {};
 
+// Aapke FamPay QR Code ki direct public image link (Aap ise apne QR image URL se badal sakte hain)
+const QR_IMAGE_URL = 'https://i.ibb.co/1z1z1z1/fampay-qr.jpg'; 
+
 module.exports = (bot) => {
-  // Direct Product Buy -> QR Show with Admin Approval
+  // Product select karne par seedha QR code photo send karna
   bot.action(/buy_(.+)_([^_]+)/, async (ctx) => {
     try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
 
@@ -21,42 +22,26 @@ module.exports = (bot) => {
     if (duration === '1d' && product === 'PHANTOM') price = '200';
     if (duration === '30d') price = '999';
 
-    await ctx.editMessageText(
-      `🛒 Payment Order Summary:\n\nProduct: ${product} (${duration})\nAmount: ₹${price}\nRef ID: ${refId}\n\nMethod: FamPay UPI (9694421148@fam)\n\n1. Scan QR code below or pay to UPI ID.\n2. Click 'Payment Done' after paying.`,
-      {
+    try {
+      await ctx.deleteMessage().catch(() => {});
+      await ctx.replyWithPhoto(QR_IMAGE_URL, {
+        caption: `🛒 Payment Order Summary:\n\nProduct: ${product} (${duration})\nAmount: ₹${price}\nRef ID: ${refId}\n\nScan the FamPay QR code above to pay, then click 'Payment Done'.`,
         ...Markup.inlineKeyboard([
-          [Markup.button.callback('📷 View QR Code', `show_qr_${refId}_${price}_${product}`)],
           [Markup.button.callback('✅ Payment Done', `verify_${refId}_${price}_${product}`)],
           [Markup.button.callback('❌ Cancel', 'open_shop')]
         ])
-      }
-    );
-  });
-
-  // Show QR Image handler
-  bot.action(/show_qr_(.+)_(\d+)_(.+)/, async (ctx) => {
-    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
-    const refId = ctx.match[1];
-    const price = ctx.match[2];
-    const product = ctx.match[3];
-
-    // Aap yahan apni FamPay QR image ka direct URL ya file id de sakte hain
-    const qrImageUrl = 'https://i.ibb.co/1z1z1z1/fampay-qr.jpg'; // Placeholder QR image
-
-    try {
-      await ctx.replyWithPhoto(qrImageUrl, {
-        caption: `📷 FamPay QR Code\nAmount: ₹${price}\nRef ID: ${refId}\n\nScan this QR to pay, then click 'Payment Done' in the shop menu.`,
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('✅ Payment Done', `verify_${refId}_${price}_${product}`)],
-          [Markup.button.callback('🔙 Back to Shop', 'open_shop')]
-        ])
       });
     } catch (err) {
-      await ctx.reply(`FamPay UPI: 9694421148@fam\nAmount: ₹${price}\nRef ID: ${refId}`);
+      await ctx.reply(`🛒 Payment Order Summary:\nProduct: ${product} (${duration})\nAmount: ₹${price}\nRef ID: ${refId}\n\nScan QR to pay & click below:`, {
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('✅ Payment Done', `verify_${refId}_${price}_${product}`)],
+          [Markup.button.callback('❌ Cancel', 'open_shop')]
+        ])
+      });
     }
   });
 
-  // Add Balance: Open Numeric Keypad (1,2,3,4,5,6,7,8,9,0)
+  // Add Balance: Open Numeric Keypad
   bot.action('add_balance', async (ctx) => {
     try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
     const userId = ctx.from.id;
@@ -65,7 +50,7 @@ module.exports = (bot) => {
     await renderKeypad(ctx, '0');
   });
 
-  // Keypad button actions
+  // Keypad actions (1,2,3...0, Delete, Clear)
   bot.action(/kp_(.+)/, async (ctx) => {
     try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
     const userId = ctx.from.id;
@@ -78,7 +63,6 @@ module.exports = (bot) => {
     } else if (action === 'clear') {
       userSessions[userId] = '0';
     } else {
-      // Number clicked
       if (userSessions[userId] === '0') {
         userSessions[userId] = action;
       } else {
@@ -90,7 +74,7 @@ module.exports = (bot) => {
   });
 
   async function renderKeypad(ctx, amount) {
-    const text = `🏛️ Custom Amount\n\nMethod: FamPay UPI (9694421148@fam)\nMin: ₹1 | Max: ₹5,000\n\nApna amount enter karo aur payment complete karke balance add karwao.\n\n🔻 Amount: ₹${amount}`;
+    const text = `🏛️ Custom Amount\n\nMin: ₹1 | Max: ₹5,000\n\nApna amount enter karo aur payment complete karke balance add karwao.\n\n🔻 Amount: ₹${amount}`;
 
     const keyboard = Markup.inlineKeyboard([
       [Markup.button.callback('💰 1', 'kp_1'), Markup.button.callback('💰 2', 'kp_2'), Markup.button.callback('💰 3', 'kp_3')],
@@ -105,7 +89,7 @@ module.exports = (bot) => {
     } catch (e) {}
   }
 
-  // Keypad Confirm -> Generate QR and Ref for Add Balance
+  // Keypad Confirm -> Send QR Code Image with Ref ID
   bot.action('kp_confirm', async (ctx) => {
     try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
     const userId = ctx.from.id;
@@ -118,19 +102,26 @@ module.exports = (bot) => {
 
     const refId = 'BAL_' + Math.floor(100000 + Math.random() * 900000);
 
-    await ctx.editMessageText(
-      `🛒 Add Balance Summary:\n\nAmount: ₹${amount}\nRef ID: ${refId}\n\nPay via FamPay UPI: 9694421148@fam\n\n1. Pay the exact amount to the UPI above.\n2. Click 'Payment Done' below.`,
-      {
+    try {
+      await ctx.deleteMessage().catch(() => {});
+      await ctx.replyWithPhoto(QR_IMAGE_URL, {
+        caption: `🛒 Add Balance Summary:\n\nAmount: ₹${amount}\nRef ID: ${refId}\n\nScan the FamPay QR code above to pay, then click 'Payment Done'.`,
         ...Markup.inlineKeyboard([
-          [Markup.button.callback('📷 View QR Code', `show_qr_${refId}_${amount}_BalanceTopUp`)],
           [Markup.button.callback('✅ Payment Done', `verify_${refId}_${amount}_BalanceTopUp`)],
-          [Markup.button.callback('🔙 Back', 'add_balance')]
+          [Markup.button.callback('🔙 Back to Menu', 'main_menu')]
         ])
-      }
-    );
+      });
+    } catch (err) {
+      await ctx.reply(`🛒 Add Balance Summary:\nAmount: ₹${amount}\nRef ID: ${refId}\n\nScan QR to pay & click below:`, {
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('✅ Payment Done', `verify_${refId}_${amount}_BalanceTopUp`)],
+          [Markup.button.callback('🔙 Back to Menu', 'main_menu')]
+        ])
+      });
+    }
   });
 
-  // Admin Approval Trigger on Payment Done
+  // Payment Done -> Admin Approval Request
   bot.action(/verify_(.+)_(\d+)_(.+)/, async (ctx) => {
     try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
     const refId = ctx.match[1];
@@ -139,9 +130,11 @@ module.exports = (bot) => {
     const userId = ctx.from.id;
     const username = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name;
 
-    await ctx.editMessageText(
-      `⏳ Aapka payment request admin ko bhej diya gaya hai. Verification ke baad key/balance add ho jayega!\n\nRef ID: ${refId}`
-    );
+    try {
+      await ctx.editMessageCaption(
+        `⏳ Aapka payment request admin ko bhej diya gaya hai. Verification ke baad key/balance add ho jayega!\n\nRef ID: ${refId}`
+      ).catch(() => ctx.reply(`⏳ Aapka payment request admin ko bhej diya gaya hai. Ref ID: ${refId}`));
+    } catch (e) {}
 
     try {
       await bot.telegram.sendMessage(
@@ -161,7 +154,7 @@ module.exports = (bot) => {
     }
   });
 
-  // Admin Approve Action
+  // Admin Approve
   bot.action(/approve_(\d+)_(.+)_(.+)_(.+)/, async (ctx) => {
     try { await ctx.answerCbQuery('Approved successfully!').catch(() => {}); } catch (e) {}
     const userId = ctx.match[1];
@@ -172,47 +165,4 @@ module.exports = (bot) => {
     const licenseKey = 'KEY-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
     try {
-      if (product === 'BalanceTopUp') {
-        await bot.telegram.sendMessage(
-          userId,
-          `🎉 Payment Approved by Admin!\n\nRef ID: ${refId}\nAdded Balance: ₹${amount}\n\nThank you for topping up!`
-        );
-      } else {
-        await bot.telegram.sendMessage(
-          userId,
-          `🎉 Payment Approved by Admin!\n\nRef ID: ${refId}\nProduct: ${product}\n\nYour License Key:\n${licenseKey}\n\nThank you for purchasing!`
-        );
-      }
-    } catch (e) {}
-
-    await ctx.editMessageText(`✅ Approved for User ID: ${userId} | Ref: ${refId}`);
-  });
-
-  // Admin Reject Action
-  bot.action(/reject_(\d+)_(.+)/, async (ctx) => {
-    try { await ctx.answerCbQuery('Rejected.').catch(() => {}); } catch (e) {}
-    const userId = ctx.match[1];
-    const refId = ctx.match[2];
-
-    try {
-      await bot.telegram.sendMessage(
-        userId,
-        `❌ Payment Rejected / Failed\n\nYour payment for Ref ID: ${refId} was rejected by admin. Please contact support @ADITYACHOUDHARY5 if this was a mistake.`
-      );
-    } catch (e) {}
-
-    await ctx.editMessageText(`❌ Rejected for User ID: ${userId} | Ref: ${refId}`);
-  });
-
-  bot.action('my_orders', async (ctx) => {
-    try { await ctx.answerCbQuery().catch(() => {}); } catch (e) {}
-    await ctx.editMessageText(
-      `📜 Your Orders:\n\nYou have no active or past orders yet.`,
-      {
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('🔙 Back to Main Menu', 'main_menu')]
-        ])
-      }
-    );
-  });
-};
+      if (product === '
