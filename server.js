@@ -64,9 +64,14 @@ bot.action('support', (ctx) => {
 const http = require('http');
 const PORT = process.env.PORT || 3000;
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bot is running successfully!');
-}).listen(PORT, () => {
+});
+
+server.listen(PORT, () => {
   console.log(`HTTP server listening on port ${PORT}`);
 });
+
+// Launch Telegram Bot
+bot.launch();
