@@ -1,9 +1,9 @@
 const { Markup } = require('telegraf');
 
 const UPI_ID = '9694421148@fam';
-const pendingProductPayments = {}; // { paymentId: { userId, product, plan, amount } }
+const pendingProductPayments = {};
 
-// Product keys pool
+// Product keys pool including Drake
 const productKeys = {
   'Phantom Panel': ['PHANTOM-1DAY-XYZ99', 'PHANTOM-3DAY-ABC88', 'PHANTOM-7DAY-LMN77'],
   'Drip Client': ['DRIP-1DAY-DRP11', 'DRIP-3DAY-DRP22', 'DRIP-7DAY-DRP33'],
@@ -13,12 +13,27 @@ const productKeys = {
   ]
 };
 
+// Helper to safely edit message (handles both text and photo messages)
+async function safeEditMessage(ctx, text, extra) {
+  try {
+    if (ctx.callbackQuery && ctx.callbackQuery.message && ctx.callbackQuery.message.photo) {
+      // If previous message was a photo (QR code), delete it and send a new text message
+      await ctx.deleteMessage().catch(() => {});
+      return ctx.reply(text, extra);
+    } else {
+      return ctx.editMessageText(text, extra);
+    }
+  } catch (err) {
+    return ctx.reply(text, extra);
+  }
+}
+
 function setupShopHandler(bot, users, ADMIN_ID) {
   // 1. Open Shop Menu
-  bot.action('shop', (ctx) => {
+  bot.action('shop', async (ctx) => {
     ctx.answerCbQuery();
     const text = `🛍️ **- ADITYA PANEL SHOP -** 🛍️\n\nPlease select a product below:`;
-    return ctx.editMessageText(text, {
+    return safeEditMessage(ctx, text, {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('💀 Phantom Panel', 'product_phantom')],
@@ -30,10 +45,10 @@ function setupShopHandler(bot, users, ADMIN_ID) {
   });
 
   // 2. Phantom Panel Pricing Menu
-  bot.action('product_phantom', (ctx) => {
+  bot.action('product_phantom', async (ctx) => {
     ctx.answerCbQuery();
     const text = `💀 **PHANTOM PANEL - PRICING** 💀`;
-    return ctx.editMessageText(text, {
+    return safeEditMessage(ctx, text, {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('1 Day - ₹95', 'buy_Phantom Panel_1 Day_95')],
@@ -45,10 +60,10 @@ function setupShopHandler(bot, users, ADMIN_ID) {
   });
 
   // 3. Drip Client Pricing Menu
-  bot.action('product_drip', (ctx) => {
+  bot.action('product_drip', async (ctx) => {
     ctx.answerCbQuery();
     const text = `💧 **DRIP CLIENT - PRICING** 💧`;
-    return ctx.editMessageText(text, {
+    return safeEditMessage(ctx, text, {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('1 Day - ₹90', 'buy_Drip Client_1 Day_90')],
@@ -59,11 +74,11 @@ function setupShopHandler(bot, users, ADMIN_ID) {
     });
   });
 
-  // 4. Drake Pricing Menu (New Added)
-  bot.action('product_drake', (ctx) => {
+  // 4. Drake Pricing Menu (Hourly & Daily plans)
+  bot.action('product_drake', async (ctx) => {
     ctx.answerCbQuery();
     const text = `⚡ **DRAKE - PRICING** ⚡`;
-    return ctx.editMessageText(text, {
+    return safeEditMessage(ctx, text, {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('1 Hour - ₹9', 'buy_Drake_1 Hour_9')],
@@ -183,13 +198,13 @@ function setupShopHandler(bot, users, ADMIN_ID) {
   });
 
   // My Orders Handler
-  bot.action('my_orders', (ctx) => {
+  bot.action('my_orders', async (ctx) => {
     ctx.answerCbQuery();
     const userId = ctx.from.id;
     const user = users[userId] || { balance: 0, orders: [] };
 
     if (user.orders.length === 0) {
-      return ctx.editMessageText('📦 **My Orders**\n\nAapne abhi tak koi order nahi kiya h.', {
+      return safeEditMessage(ctx, '📦 **My Orders**\n\nAapne abhi tak koi order nahi kiya h.', {
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Back to Main Menu', 'main_menu')]])
       });
@@ -200,7 +215,7 @@ function setupShopHandler(bot, users, ADMIN_ID) {
       text += `${index + 1}. **${order.product}** (${order.plan})\n🔑 Key: \`${order.key}\`\n📅 Date: ${order.date}\n\n`;
     });
 
-    return ctx.editMessageText(text, {
+    return safeEditMessage(ctx, text, {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Back to Main Menu', 'main_menu')]])
     });
