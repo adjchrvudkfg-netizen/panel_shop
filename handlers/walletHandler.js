@@ -124,7 +124,7 @@ function setupWalletHandler(bot, users, ADMIN_ID) {
   bot.action(/reject_(.+)/, async (ctx) => {
     ctx.answerCbQuery('Rejected!');
     const paymentId = ctx.match[1];
-    const payment, payment = pendingPayments[paymentId];
+    const payment = pendingPayments[paymentId];
 
     if (payment && payment.status === 'PENDING') {
       payment.status = 'REJECTED';
