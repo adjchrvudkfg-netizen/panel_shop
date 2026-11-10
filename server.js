@@ -1,90 +1,64 @@
+require('dotenv').config();
 const { Telegraf, Markup } = require('telegraf');
-const express = require('express');
-const path = require('path');
-const https = require('https');
+const { getMainMenu } = require('./utils/keyboards');
+const { setupProfileHandler } = require('./handlers/profileHandler');
+const { setupWalletHandler } = require('./handlers/walletHandler');
+const { setupShopHandler } = require('./handlers/shopHandler');
 
-// Bot Token configuration
 const BOT_TOKEN = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
+const ADMIN_ID = 8805135936;
+
 const bot = new Telegraf(BOT_TOKEN);
+const users = {}; // Shared user database object
 
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// Start command
+bot.start((ctx) => {
+  const userId = ctx.from.id;
+  const firstName = ctx.from.first_name || 'User';
+  if (!users[userId]) users[userId] = { balance: 0, orders: [] };
+  const user = users[userId];
 
-// /start command (Main Welcome Menu)
-bot.start(async (ctx) => {
-    try {
-        const welcomeText = 
-`⌨️ – ADITYA PANEL SHOP – ⌨️
+  const text = `═══ - ADITYA PANEL SHOP - ═══\n\n` +
+               `🌸 Hello, ${firstName}!\n\n` +
+               `☆ Premium digital keys, instant delivery.\n\n` +
+               `Tap any button below to begin.\n` +
+               `_____________________\n` +
+               `👤 User ID: ${userId}\n` +
+               `💰 Wallet Balance: ₹${user.balance}`;
 
-🌸 Hello, ${ctx.from.first_name || 'User'}!
-
-⚝ **Premium digital keys, instant delivery.**
-
-– 🛒 **Wide product catalog**
-– ⚡ **Instant key delivery**
-– 💲 **Multiple payment gateways**
-– 🛡️ **24/7 admin support**
-
-**Tap any button below to begin.**
-
-──────────────────
-👤 User ID: \`${ctx.from.id}\`
-💰 Wallet Balance: ₹0 (~$0.85)`;
-
-        await ctx.reply(welcomeText, {
-            parse_mode: 'Markdown',
-            ...Markup.inlineKeyboard([
-                [Markup.button.callback('🛍️ Shop', 'shop_menu')],
-                [Markup.button.callback('💳 Add Balance', 'add_balance'), Markup.button.callback('📦 My Orders', 'my_orders')],
-                [Markup.button.callback('👤 My Profile', 'my_profile'), Markup.button.url('PAID_PUSH 💯', 'https://t.me/+rd5guGEUyR41MzA1')],
-                [Markup.button.url('🎧 Support', 'https://t.me/adityachoudhary5')]
-            ])
-        });
-    } catch (e) {
-        console.error('Error in /start:', e);
-    }
+  return ctx.reply(text, getMainMenu());
 });
 
-// Load Shop Handler safely
-try {
-    const { setupShopHandler } = require('./handlers/shopHandler');
-    setupShopHandler(bot);
-    console.log('✅ Shop handler loaded successfully!');
-} catch (e) {
-    console.error('⚠️ Shop handler error:', e.message);
-}
+// Back to main menu helper action
+bot.action('main_menu', (ctx) => {
+  ctx.answerCbQuery();
+  const userId = ctx.from.id;
+  if (!users[userId]) users[userId] = { balance: 0, orders: [] };
+  const user = users[userId];
 
-// Dummy Placeholders for unhandled buttons
-['my_orders', 'my_profile'].forEach((action) => {
-    bot.action(action, async (ctx) => {
-        await ctx.answerCbQuery('Feature coming soon!');
-    });
+  const text = `═══ - ADITYA PANEL SHOP - ═══\n\n` +
+               `🌸 Hello, ${ctx.from.first_name}!\n\n` +
+               `Tap any button below to begin.\n` +
+               `_____________________\n` +
+               `👤 User ID: ${userId}\n` +
+               `💰 Wallet Balance: ₹${user.balance}`;
+
+  return ctx.editMessageText(text, getMainMenu());
 });
 
-// Telegram Bot Launch
-bot.launch().then(() => {
-    console.log('🤖 Telegram Bot is running successfully...');
-}).catch((err) => {
-    console.error('Bot launch error:', err);
+// Setup modular handlers
+setupProfileHandler(bot, users);
+setupWalletHandler(bot, users, ADMIN_ID);
+setupShopHandler(bot, users);
+
+// Support action
+bot.action('support', (ctx) => {
+  ctx.answerCbQuery();
+  return ctx.editMessageText('🎧 **Support Center**\n\nKisi bhi samasya ke liye admin se sampark karein: @adityachoudhary5', {
+    parse_mode: 'Markdown',
+    ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Back', 'main_menu')]])
+  });
 });
 
-// Express Server Launch
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🌐 Web Store Server running on port ${PORT}`);
-});
-
-// Graceful Stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
-// Self-Ping Keep-Alive to prevent Render sleeping
-const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://drake-panel-8py1.onrender.com';
-setInterval(() => {
-    https.get(RENDER_URL, (res) => {
-        console.log(`[Keep-Alive] Pinged server, status: ${res.statusCode}`);
-    }).on('error', (err) => {
-        console.error('[Keep-Alive] Ping error:', err.message);
-    });
-}, 10 * 60 * 1000);
+bot.launch();
+console.log("Modular Bot running successfully...");

@@ -1,48 +1,24 @@
 const { Markup } = require('telegraf');
+const users = {}; // Ya aapka database module
 
-function setupProfileHandler(bot) {
-    // 1. My Profile View with Back Button
-    bot.action('my_profile', async (ctx) => {
-        try {
-            await ctx.answerCbQuery();
-            const profileText = 
-`👤 **USER PROFILE**
+function setupProfileHandler(bot, userDb) {
+  bot.action('my_profile', (ctx) => {
+    ctx.answerCbQuery();
+    const userId = ctx.from.id;
+    const user = userDb[userId] || { balance: 0, orders: [] };
 
-🆔 **User ID:** \`${ctx.from.id}\`
-👤 **Name:** ${ctx.from.first_name}
-💰 **Wallet Balance:** ₹0
-📦 **Total Orders:** 0`;
+    const text = `👤 **USER PROFILE**\n\n` +
+                 `🆔 **User ID:** \`${userId}\`\n` +
+                 `👤 **Name:** ${ctx.from.first_name || 'N/A'}\n` +
+                 `🏷️ **Username:** @${ctx.from.username || 'None'}\n` +
+                 `💰 **Wallet Balance:** ₹${user.balance}\n` +
+                 `📦 **Total Orders:** ${user.orders.length}`;
 
-            await ctx.editMessageText(profileText, {
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.callback('🔙 Back to Main Menu', 'back_to_start')]
-                ])
-            });
-        } catch (error) {
-            console.error('Error in my_profile action:', error);
-        }
+    return ctx.editMessageText(text, {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Back to Main Menu', 'main_menu')]])
     });
-
-    // 2. My Orders View with Back Button
-    bot.action('my_orders', async (ctx) => {
-        try {
-            await ctx.answerCbQuery();
-            const ordersText = 
-`📦 **MY ORDERS**
-
-Aapke paas abhi koi active orders nahi hain.`;
-
-            await ctx.editMessageText(ordersText, {
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([
-                    [Markup.button.callback('🔙 Back to Main Menu', 'back_to_start')]
-                ])
-            });
-        } catch (error) {
-            console.error('Error in my_orders action:', error);
-        }
-    });
+  });
 }
 
 module.exports = { setupProfileHandler };
