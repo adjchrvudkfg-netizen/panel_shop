@@ -6,12 +6,12 @@ const { setupWalletHandler } = require('./handlers/walletHandler');
 const { setupShopHandler } = require('./handlers/shopHandler');
 
 const BOT_TOKEN = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
-const ADMIN_ID = 8805135936;
+const ADMIN_ID = 8805135936; // Aapka Telegram Admin ID
 
 const bot = new Telegraf(BOT_TOKEN);
-const users = {}; // Shared user database object
+const users = {}; // Shared Database object
 
-// Start command
+// Start Command
 bot.start((ctx) => {
   const userId = ctx.from.id;
   const firstName = ctx.from.first_name || 'User';
@@ -29,7 +29,7 @@ bot.start((ctx) => {
   return ctx.reply(text, getMainMenu());
 });
 
-// Back to main menu helper action
+// Back to Main Menu
 bot.action('main_menu', (ctx) => {
   ctx.answerCbQuery();
   const userId = ctx.from.id;
@@ -46,12 +46,12 @@ bot.action('main_menu', (ctx) => {
   return ctx.editMessageText(text, getMainMenu());
 });
 
-// Setup modular handlers
+// Setup Handlers
 setupProfileHandler(bot, users);
 setupWalletHandler(bot, users, ADMIN_ID);
 setupShopHandler(bot, users);
 
-// Support action
+// Support
 bot.action('support', (ctx) => {
   ctx.answerCbQuery();
   return ctx.editMessageText('🎧 **Support Center**\n\nKisi bhi samasya ke liye admin se sampark karein: @adityachoudhary5', {
@@ -61,4 +61,4 @@ bot.action('support', (ctx) => {
 });
 
 bot.launch();
-console.log("Modular Bot running successfully...");
+console.log("Modular bot running successfully...");

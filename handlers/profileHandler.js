@@ -1,11 +1,10 @@
 const { Markup } = require('telegraf');
-const users = {}; // Ya aapka database module
 
-function setupProfileHandler(bot, userDb) {
+function setupProfileHandler(bot, users) {
   bot.action('my_profile', (ctx) => {
     ctx.answerCbQuery();
     const userId = ctx.from.id;
-    const user = userDb[userId] || { balance: 0, orders: [] };
+    const user = users[userId] || { balance: 0, orders: [] };
 
     const text = `👤 **USER PROFILE**\n\n` +
                  `🆔 **User ID:** \`${userId}\`\n` +

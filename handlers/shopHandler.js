@@ -8,7 +8,6 @@ function setupShopHandler(bot, users) {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
         [Markup.button.callback('💀 Phantom Panel', 'product_phantom')],
-        [Markup.button.callback('$ Drake Panel', 'product_phantom')],
         [Markup.button.callback('💧 Drip Client', 'product_drip')],
         [Markup.button.callback('⬅️ Back to Main Menu', 'main_menu')]
       ])
